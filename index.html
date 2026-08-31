@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>제이드앤워터 모닝보드</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#EDF0EC; --surface:#FAFBF8; --surface-2:#E2E7E1; --inset:#F1F4EF;
+  --ink:#1B2320; --ink-2:#4C5955; --ink-3:#7B8783;
+  --line:#CBD3CC; --line-2:#AAB5AE;
+  --jade:#17685A; --jade-deep:#0E4B40; --jade-wash:rgba(23,104,90,.11); --jade-soft:#5E9C8F;
+  --water:#49677A; --water-wash:rgba(73,103,122,.12);
+  --warn:#8C5A18; --warn-wash:rgba(140,90,24,.12);
+  --rain:#8C3A2E; --rain-wash:rgba(140,58,46,.09);
+  --disp:'Gowun Batang','Batang',serif;
+  --sans:'IBM Plex Sans KR','Malgun Gothic',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101614; --surface:#171F1C; --surface-2:#212B27; --inset:#1B2521;
+    --ink:#E5EAE7; --ink-2:#A3AFAA; --ink-3:#77837E;
+    --line:#2B3531; --line-2:#3E4A45;
+    --jade:#4FA895; --jade-deep:#7CC4B3; --jade-wash:rgba(79,168,149,.14); --jade-soft:#3A8272;
+    --water:#7FA3B8; --water-wash:rgba(127,163,184,.14);
+    --warn:#D8A050; --warn-wash:rgba(216,160,80,.13);
+    --rain:#DA8B76; --rain-wash:rgba(218,139,118,.11);
+  }
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+.board{max-width:1060px;margin:0 auto;padding:34px 24px 64px;display:flex;flex-direction:column;gap:22px}
+
+/* header */
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px;border-bottom:2px solid var(--ink);padding-bottom:18px}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);margin:0;letter-spacing:-.01em}
+.brand p{margin:4px 0 0;font-size:13px;color:var(--ink-2)}
+.brand p b{color:var(--jade);font-weight:600}
+.head-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.headctl{display:flex;align-items:center;gap:8px}
+.datex{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+.wx{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font-family:var(--mono);font-size:12px;padding:3px 10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;white-space:nowrap}
+.chip.rain{border-color:var(--rain);color:var(--rain);background:var(--rain-wash)}
+.btn{font-family:var(--sans);font-size:12.5px;font-weight:600;padding:6px 14px;background:var(--jade);color:#fff;border:0;cursor:pointer;border-radius:3px}
+.btn:hover{background:var(--jade-deep)}
+.btn:focus-visible{outline:2px solid var(--jade);outline-offset:2px}
+.btn.ghost{background:var(--surface);color:var(--ink-2);border:1px solid var(--line-2)}
+.btn.ghost:hover{color:var(--jade);border-color:var(--jade)}
+
+/* nav tabs */
+.nav{display:flex;gap:0;border-bottom:1px solid var(--line-2)}
+.nav button{font-family:var(--disp);font-size:15px;font-weight:700;padding:10px 22px;border:0;background:none;color:var(--ink-3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.nav button[aria-selected="true"]{color:var(--jade-deep);border-bottom-color:var(--jade)}
+.nav button:focus-visible{outline:2px solid var(--jade);outline-offset:2px}
+.page{display:none}
+.page.on{display:flex;flex-direction:column;gap:22px}
+
+/* manual */
+.man h3{font-family:var(--disp);font-size:16px;font-weight:700;margin:0 0 4px;color:var(--jade-deep)}
+.man p,.man li{font-size:13.5px;color:var(--ink-2);line-height:1.7;margin:0}
+.man ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.man ol{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.man b{color:var(--ink)}
+.man code{font-family:var(--mono);font-size:12px;background:var(--inset);border:1px solid var(--line);padding:1px 6px}
+.man .step{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--jade);margin-right:6px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.kv dt{font-weight:600;color:var(--ink);white-space:nowrap}
+.kv dd{margin:0;color:var(--ink-2)}
+
+/* setup */
+.setup{border:1px solid var(--warn);background:var(--warn-wash);padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.setup h2{font-family:var(--disp);font-size:17px;margin:0}
+.setup p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.setup a{color:var(--jade);font-weight:600}
+.keyrow{display:flex;gap:8px;flex-wrap:wrap}
+.keyrow input{flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
+.keyrow input:focus-visible{outline:2px solid var(--jade)}
+.setup .err{color:var(--rain);font-weight:600}
+
+/* verdict */
+.verdict{display:flex;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--warn);padding:16px 20px}
+.vpill{flex:none;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--warn);background:var(--warn-wash);border:1px solid var(--warn);padding:5px 12px;border-radius:999px;white-space:nowrap}
+.verdict p{margin:0;font-size:15px;line-height:1.55}
+.verdict.surging{border-left-color:var(--jade)}
+.verdict.surging .vpill{color:var(--jade-deep);border-color:var(--jade);background:var(--jade-wash)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+.ct{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ct h2{font-family:var(--disp);font-size:19px;font-weight:700;margin:0}
+.ct .sub{font-size:12px;color:var(--ink-3);font-family:var(--mono);margin-left:auto}
+.cap{font-size:12.5px;color:var(--ink-3);margin:0;line-height:1.55}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+
+/* live */
+.livebadge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:3px 10px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-3);background:var(--inset)}
+.livebadge i{width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
+.livebadge.on{border-color:var(--jade);color:var(--jade);background:var(--jade-wash)}
+.livebadge.on i{background:var(--jade)}
+.livebadge.err{border-color:var(--rain);color:var(--rain);background:var(--rain-wash)}
+.livebadge.err i{background:var(--rain)}
+.lvh{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.lvh .sup{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--ink-3);margin-left:8px}
+.reads{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);background:var(--surface)}
+.read{flex:1 1 128px;padding:12px 16px;border-right:1px solid var(--line)}
+.read:last-child{border-right:0}
+.mlabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:4px}
+.rv{font-family:var(--mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.rv.up{color:var(--jade)} .rv.down{color:var(--rain)}
+.strip{display:flex;height:30px;border:1px solid var(--line);overflow:hidden}
+.seg{min-width:0}
+.bars{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.bar{display:grid;grid-template-columns:9em 1fr 4.2em;align-items:center;gap:10px;font-size:13px}
+.bar .bn{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{display:block;width:100%;height:9px;background:var(--surface-2);position:relative}
+.fill{height:100%;background:var(--water);display:block}
+.fill.hi{background:var(--jade)}
+.bar .bv{font-family:var(--mono);font-size:12px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.surge ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.surge li{display:grid;grid-template-columns:1.6em 1fr auto;gap:8px;align-items:baseline;font-size:13.5px;padding:7px 10px;background:var(--inset);border:1px solid var(--line)}
+.surge li .rk{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-weight:600}
+.surge li .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.surge li .vv{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.surge li.me{border-color:var(--jade);background:var(--jade-wash)}
+.surge li.me .nm{color:var(--jade-deep);font-weight:700}
+
+/* weather strip */
+.wxs{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
+.wxc{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 5px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.wxc .h{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.wxc .t{font-family:var(--mono);font-size:11px;font-weight:600}
+.wxc .r{font-family:var(--mono);font-size:10px;color:var(--water)}
+.wxc.wet{background:var(--water-wash);border-color:var(--water)}
+.wxc.br{outline:2px solid var(--warn);outline-offset:-2px}
+
+/* hero chart */
+#curve{display:block;width:100%;height:auto;touch-action:none}
+.simbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;background:var(--inset);border:1px solid var(--line);padding:12px 16px}
+.sim-item{display:flex;flex-direction:column;gap:1px}
+.sim-item .l{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.sim-item .v{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.sim-item .v em{font-style:normal;font-size:12px;color:var(--ink-3);font-weight:400}
+.hourctl{display:flex;align-items:center;gap:6px;margin-left:auto}
+.hourctl .hl{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.hourctl button{font-family:var(--mono);font-size:15px;line-height:1;width:28px;height:28px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer}
+.hourctl button:hover{border-color:var(--jade);color:var(--jade)}
+.hourctl button:focus-visible{outline:2px solid var(--jade);outline-offset:1px}
+.hourctl .hv{font-family:var(--mono);font-size:15px;font-weight:600;min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums}
+.simnote{font-size:12.5px;color:var(--ink-2);margin:0}
+.simnote b{color:var(--jade);font-weight:600}
+
+/* advice */
+.advice{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.adv{border:1px solid var(--line);background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+.adv .tag{font-family:var(--mono);font-size:10px;letter-spacing:.14em;font-weight:600;text-transform:uppercase}
+.adv h3{font-family:var(--disp);font-size:16px;font-weight:700;margin:0;line-height:1.4;text-wrap:balance}
+.adv p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.6}
+.adv .why{font-family:var(--mono);font-size:11px;color:var(--ink-3);border-top:1px dashed var(--line);padding-top:7px;margin-top:auto}
+.adv.a-rain{border-top:3px solid var(--rain)} .adv.a-rain .tag{color:var(--rain)}
+.adv.a-jade{border-top:3px solid var(--jade)} .adv.a-jade .tag{color:var(--jade)}
+.adv.a-warn{border-top:3px solid var(--warn)} .adv.a-warn .tag{color:var(--warn)}
+.adv.a-water{border-top:3px solid var(--water)} .adv.a-water .tag{color:var(--water)}
+
+/* isotype */
+.tabs{display:flex;gap:0;border:1px solid var(--line-2);width:max-content}
+.tabs button{font-family:var(--sans);font-size:12.5px;font-weight:500;padding:6px 14px;border:0;background:var(--surface);color:var(--ink-2);cursor:pointer;border-right:1px solid var(--line)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--jade);color:#fff;font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--jade);outline-offset:2px}
+.iso{display:grid;grid-template-columns:repeat(20,1fr);gap:4px}
+.iso svg{width:100%;height:auto;display:block}
+.isoleg{display:flex;flex-wrap:wrap;gap:5px 16px;font-size:12.5px;color:var(--ink-2)}
+.isoleg .k{display:inline-flex;align-items:center;gap:6px}
+.isoleg .k i{width:11px;height:11px;display:inline-block;border-radius:2px}
+.isoleg b{color:var(--ink);font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px}
+
+#tmap{display:block;width:100%;height:auto}
+
+/* copy */
+.copybox{background:var(--inset);border:1px dashed var(--line-2);padding:14px 16px;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
+.copybox b{color:var(--ink)}
+.copyrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#copymsg{font-size:12.5px;color:var(--jade);opacity:0;transition:opacity .2s}
+
+/* week */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.day{border:1px solid var(--line);background:var(--surface);padding:10px 8px;text-align:center;display:flex;flex-direction:column;gap:4px}
+.day .dn{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.day .ds{font-size:11px;color:var(--ink-3)}
+.day.have{border-color:var(--jade);background:var(--jade-wash)}
+.day.have .dn{color:var(--jade);font-weight:600}
+.day.have .ds{color:var(--jade)}
+
+footer{border-top:1px solid var(--line-2);padding-top:16px;font-size:12px;color:var(--ink-3);line-height:1.7}
+footer code{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+footer a{color:var(--water)}
+
+@media(max-width:820px){
+  .board{padding:22px 14px 48px;gap:18px}
+  .grid2,.advice{grid-template-columns:1fr}
+  .iso{grid-template-columns:repeat(10,1fr)}
+  .head-right{align-items:flex-start;margin-left:0}
+  .hourctl{margin-left:0}
+  .wxs{grid-template-columns:repeat(12,1fr)}
+  .wxc:nth-child(n+13){display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="board">
+
+  <header class="head">
+    <div class="brand">
+      <h1>제이드앤워터 모닝보드</h1>
+      <p>성수 LCDC점 · A동 4층 · <b>09:00–17:00</b> (L.O 16:00) · 연중무휴</p>
+    </div>
+    <div class="head-right">
+      <div class="headctl">
+        <span class="livebadge" id="liveBadge"><i></i>대기</span>
+        <span class="datex" id="datex">데이터 없음</span>
+        <button class="btn" id="refreshBtn">지금 갱신</button>
+        <button class="btn ghost" id="keyBtn" title="API 키 설정">키</button>
+      </div>
+      <div class="wx">
+        <span class="chip" id="chipRain">–</span>
+        <span class="chip" id="chipTemp">–</span>
+        <span class="chip" id="chipHum">–</span>
+        <span class="chip" id="chipAir">–</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav" role="tablist" aria-label="페이지 전환">
+    <button role="tab" aria-selected="true" data-page="pageBoard">보드</button>
+    <button role="tab" aria-selected="false" data-page="pageManual">설명서</button>
+  </nav>
+
+  <div class="page on" id="pageBoard">
+
+  <div class="setup" id="setup" hidden>
+    <h2>서울시 열린데이터광장 인증키가 필요합니다 (무료)</h2>
+    <p>이 보드는 MCP·중계 서버 없이 <b>서울시 공공 API를 브라우저에서 직접</b> 호출합니다.
+       <a href="https://data.seoul.go.kr" target="_blank" rel="noopener">data.seoul.go.kr</a> 가입 → 마이페이지 → <b>인증키 신청(일반 인증키)</b> → 발급된 키를 아래에 붙여넣으세요. 키는 이 브라우저에만 저장됩니다.</p>
+    <div class="keyrow">
+      <input id="keyInput" type="text" placeholder="발급받은 인증키 붙여넣기" autocomplete="off" spellcheck="false">
+      <button class="btn" id="keySave">저장하고 불러오기</button>
+    </div>
+    <p class="err" id="keyErr" hidden></p>
+  </div>
+
+  <div class="verdict" id="verdict">
+    <span class="vpill" id="vpill">판단 대기</span>
+    <p id="vtext">키를 등록하면 실시간 데이터로 오늘의 판단이 채워집니다.</p>
+  </div>
+
+  <section class="card">
+    <div class="ct">
+      <h2>실시간 상권 신호</h2>
+      <span class="sub" id="liveTime">–</span>
+    </div>
+    <div class="reads">
+      <div class="read"><span class="mlabel">거리 유동인구</span><div class="rv" id="lvPop">–</div></div>
+      <div class="read"><span class="mlabel">혼잡도</span><div class="rv" id="lvCongest">–</div></div>
+      <div class="read"><span class="mlabel">카드소비 (10분)</span><div class="rv" id="lvPay">–</div></div>
+      <div class="read"><span class="mlabel">직전 관측 대비</span><div class="rv" id="lvDelta">–</div></div>
+      <div class="read"><span class="mlabel">상권 활발도</span><div class="rv" id="lvLvl">–</div></div>
+      <div class="read"><span class="mlabel">개인 : 법인</span><div class="rv" id="lvCard">–</div></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <h3 class="lvh">오늘 다녀간 사람 <span class="sup" id="todayMeta">누적 관측 대기</span></h3>
+        <div class="strip" id="todayAge"></div>
+        <div class="isoleg" id="todayAgeLeg" style="margin-top:7px"></div>
+        <p class="cap" id="todayCap" style="margin-top:6px">보드를 켜두면 갱신 때마다 거리 인구 구성을 누적합니다. 사람이 많던 시간대일수록 무겁게 반영되어, 하루가 갈수록 "오늘 실제로 많이 온 사람"의 프로필이 됩니다.</p>
+      </div>
+      <div>
+        <h3 class="lvh">업종별 소비 <span class="sup">10분 결제액 기준</span></h3>
+        <ul class="bars" id="consInd"></ul>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="surge">
+        <h3 class="lvh">성수 자가 급증 감지 <span class="sup">직전 관측 대비</span></h3>
+        <ol id="selfSurge"><li><span class="rk">·</span><span class="nm">두 번째 갱신부터 계산됩니다</span><span class="vv">–</span></li></ol>
+      </div>
+      <div class="surge">
+        <h3 class="lvh">핫플 실시간 비교 <span class="sup">유동인구 순</span></h3>
+        <ol id="cmpList"><li><span class="rk">·</span><span class="nm">갱신 대기</span><span class="vv">–</span></li></ol>
+      </div>
+    </div>
+    <p class="cap"><b>인구 +20% 또는 소비 +30% 급증 시</b> 상단 판단이 자동으로 '증량 검토'로 바뀝니다. 소비 수치는 10분 스냅샷이라 표본이 작습니다(현재 결제 <span id="lvCnt">–</span>건) — 분포는 참고, 추세는 누적으로. <span id="autoTxt">10분마다 자동 갱신</span>.</p>
+  </section>
+
+  <section class="card">
+    <div class="ct">
+      <h2>오늘 시간대별 날씨</h2>
+      <span class="sub">강수확률·기온 · 노란 테두리 = 브런치 창</span>
+    </div>
+    <div class="wxs" id="wxs"></div>
+    <p class="cap" id="wxCap">키 등록 후 24시간 예보가 표시됩니다.</p>
+  </section>
+
+  <section class="card">
+    <div class="ct">
+      <h2>수요 곡선 위의 우리 영업시간</h2>
+      <span class="sub">회색 밴드 = 월요일 기준선 · 옥색 점선 = 오늘 실시간 예측</span>
+    </div>
+    <svg id="curve" role="img" aria-label="시간대별 유동인구 곡선 위에 영업시간 블록과 오늘의 실시간 예측이 겹쳐진 차트"></svg>
+    <div class="simbar">
+      <div class="sim-item"><span class="l">영업 중 평균 유동</span><span class="v" id="mAvg">–</span></div>
+      <div class="sim-item"><span class="l">라스트오더 시각 유동</span><span class="v" id="mLo">–</span></div>
+      <div class="sim-item"><span class="l">마감 후 2시간 평균</span><span class="v" id="mAfter">–</span></div>
+      <div class="hourctl" role="group" aria-label="영업시간 조정">
+        <span class="hl">오픈</span>
+        <button id="oMinus" aria-label="오픈 한 시간 앞으로">−</button>
+        <span class="hv" id="oVal">09시</span>
+        <button id="oPlus" aria-label="오픈 한 시간 뒤로">+</button>
+        <span class="hl" style="margin-left:10px">마감</span>
+        <button id="cMinus" aria-label="마감 한 시간 앞으로">−</button>
+        <span class="hv" id="cVal">17시</span>
+        <button id="cPlus" aria-label="마감 한 시간 뒤로">+</button>
+      </div>
+    </div>
+    <p class="simnote" id="simText"></p>
+    <p class="cap">블록 경계 드래그 또는 +/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 성수카페거리 전체 유동(우리 매장 방문객 아님) — 상대 비교용입니다.</p>
+  </section>
+
+  <section>
+    <div class="ct" style="margin-bottom:12px">
+      <h2 style="font-family:var(--disp);font-size:19px;margin:0">오늘의 조언</h2>
+      <span class="sub" style="font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto">데이터에서 자동 도출</span>
+    </div>
+    <div class="advice" id="advice">
+      <div class="adv a-warn">
+        <span class="tag">영업시간</span>
+        <h3>16시 라스트오더 순간의 거리 인구를 확인하라</h3>
+        <p>월요일 기준 하루 정점(13–16시)이 끝나는 지점에서 문을 닫습니다. 위 시뮬레이터에서 마감 연장의 크기를 가늠해 보세요. 오늘 예측(옥색 점선)이 기준선과 다르게 움직이면 그쪽을 믿으세요.</p>
+        <span class="why">근거 — 월요일 기준선 16시 유동 36–38천</span>
+      </div>
+      <div class="adv a-jade">
+        <span class="tag">연계</span>
+        <h3>10월 2일까지, 옆 건물에 무료 전시가 있다</h3>
+        <p>우란문화재단 「안식의 결 Texture of Rest」 — 무료·전연령, 같은 도보권. 전시 리플릿 지참 혜택 같은 가벼운 연계가 신규 유입 장치로 가장 쌉니다.</p>
+        <span class="why">근거 — 2026.07.24–10.02 · 우란1경·2경</span>
+      </div>
+      <div class="adv a-water">
+        <span class="tag">손님</span>
+        <h3>손님 절반 이상이 초행길이다</h3>
+        <p>거리 인구의 절반 이상이 외지 방문객입니다(실시간 수치는 '지금 거리의 100명' 참고). 4층 매장은 목적 방문이 필수 — 아래 안내문을 프로필에 붙여넣으세요.</p>
+        <span class="why">근거 — 비상주 비율 실시간 · LCDC 연 100만+ 방문</span>
+      </div>
+      <div class="adv a-rain" id="advRain" hidden>
+        <span class="tag">날씨</span>
+        <h3 id="advRainH">–</h3>
+        <p id="advRainP">–</p>
+        <span class="why" id="advRainW">–</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="ct"><h2>지금 거리의 100명</h2><span class="sub" id="isoTime">실시간</span></div>
+      <div class="tabs" role="tablist" aria-label="손님 구성 보기">
+        <button role="tab" aria-selected="true" data-lens="age">연령</button>
+        <button role="tab" aria-selected="false" data-lens="res">사는 곳</button>
+        <button role="tab" aria-selected="false" data-lens="sex">성별</button>
+      </div>
+      <div class="iso" id="iso" aria-hidden="true"></div>
+      <div class="isoleg" id="isoleg"></div>
+      <p class="cap" id="isocap"></p>
+    </section>
+
+    <section class="card">
+      <div class="ct"><h2>이 골목의 경쟁 지형</h2><span class="sub">카드 가맹점 수</span></div>
+      <svg id="tmap" role="img" aria-label="업종별 가맹점 수 트리맵"></svg>
+      <p class="cap" id="tmapCap">면적 = 가맹점 수. 우리가 속한 <b>제과·커피</b>(옥색) 비중을 봅니다. 성수는 식사 업종이 훨씬 두꺼운 상권 — 브런치의 실제 경쟁자는 옆 카페가 아니라 <b>점심 식당</b>입니다.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="ct"><h2>손님에게 보낼 안내문</h2><span class="sub">프로필·플레이스·예약 확인 문자용</span></div>
+    <div class="copybox" id="copysrc">📍 <b>제이드앤워터 성수 LCDC점</b> — LCDC SEOUL A동 4층<br>
+🚇 성수역(2호선) 3번 출구 도보 8분 · 🚲 따릉이 '4377 우영테크노센터 앞' 대여소에서 도보 3분<br>
+🚗 주차보다 대중교통을 권해요 (성수 일대 방문객 주차 매우 제한적)<br>
+⏰ 연중무휴 09:00–17:00 · 라스트오더 16:00 · 올데이 브런치</div>
+    <div class="copyrow">
+      <button class="btn" id="copybtn">안내문 복사</button>
+      <span id="copymsg">복사됐습니다 — 그대로 붙여넣으세요</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="ct"><h2>요일 리듬 수집 현황</h2><span class="sub">보드를 연 날짜가 자동 기록됩니다</span></div>
+    <div class="week" id="week"></div>
+    <p class="cap">브런치 장사의 진짜 질문은 "주말 곡선이 평일과 얼마나 다른가"입니다. 요일별 관측이 쌓이면 준비량 기준이 생깁니다.</p>
+  </section>
+
+  </div><!-- /pageBoard -->
+
+  <div class="page man" id="pageManual">
+
+    <section class="card">
+      <h3>이 보드는 무엇인가</h3>
+      <p>제이드앤워터 성수 LCDC점을 위한 <b>아침 운영 대시보드</b>입니다. 서울시가 공개하는 성수카페거리 실시간 데이터(유동인구·카드소비·날씨·예측)를 이 파일이 직접 받아와, "오늘 얼마나 준비할지"와 "몇 시가 승부처인지"를 한 화면으로 보여줍니다. 설치·서버·구독이 전혀 없고, <b>이 HTML 파일 하나</b>로 동작합니다.</p>
+    </section>
+
+    <section class="card">
+      <h3>처음 한 번 — 인증키 발급 (약 5분, 무료)</h3>
+      <ol>
+        <li><span class="step">1</span><b>data.seoul.go.kr</b>(서울 열린데이터광장) 회원가입 후 로그인</li>
+        <li><span class="step">2</span>마이페이지 → <b>인증키 신청</b> → "일반 인증키" 발급 (사용 용도는 간단히 적으면 됩니다)</li>
+        <li><span class="step">3</span>발급된 키를 복사해 보드 상단 <b>[키]</b> 버튼 → 입력창에 붙여넣고 <b>[저장하고 불러오기]</b></li>
+      </ol>
+      <p style="margin-top:6px">키는 이 컴퓨터의 이 브라우저에만 저장됩니다. 다른 컴퓨터·폰에서 열면 그 기기에서 한 번 더 넣어야 합니다.</p>
+    </section>
+
+    <section class="card">
+      <h3>매일 아침 — 여는 법과 읽는 순서</h3>
+      <ol>
+        <li><span class="step">1</span>파일을 더블클릭해 엽니다. 이후 10분마다 자동 갱신되고, <b>[지금 갱신]</b>으로 즉시 새로고침할 수 있습니다.</li>
+        <li><span class="step">2</span><b>판단 배지</b>부터 봅니다 — "준비량 유지"면 평소대로, <b>"증량 검토"</b>로 바뀌면 재료·인력 여유분 점검.</li>
+        <li><span class="step">3</span><b>오늘 시간대별 날씨</b> — 노란 테두리(브런치 창 10–15시)에 파란 칸(강수확률 50%↑)이 있으면 우산·실내 회전 준비.</li>
+        <li><span class="step">4</span><b>수요 곡선</b> — 옥색 점선(오늘 예측)이 회색 밴드(월요일 기준선)보다 높으면 평소보다 붐비는 날입니다.</li>
+        <li><span class="step">5</span>필요할 때 <b>오늘의 조언</b>과 나머지 섹션을 참고합니다.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h3>각 섹션 읽는 법</h3>
+      <dl class="kv">
+        <dt>실시간 상권 신호</dt><dd>거리 유동인구·혼잡도·10분 카드소비. "직전 관측 대비"는 이 보드가 직접 계산한 증감률입니다.</dd>
+        <dt>오늘 다녀간 사람</dt><dd>갱신 때마다 거리 인구 구성을 누적한 <b>오늘 하루의 방문객 프로필</b>. 사람이 많던 시간대가 더 무겁게 반영됩니다. 저녁에 볼수록 정확해집니다.</dd>
+        <dt>성수 자가 급증 감지</dt><dd>약 45분 전 관측 대비 <b>인구 +20% 또는 소비 +30%</b>면 ▲ 표시와 함께 상단 판단이 '증량 검토'로 자동 전환됩니다.</dd>
+        <dt>핫플 실시간 비교</dt><dd>서울숲·연남동·압구정로데오·홍대와 지금 이 순간의 유동인구를 비교합니다. 성수 줄이 옥색입니다.</dd>
+        <dt>수요 곡선·시뮬레이터</dt><dd>옥색 블록이 영업시간(기본 09–17시). 블록 경계를 드래그하거나 +/− 버튼으로 바꾸면 "영업 중 평균 유동"이 다시 계산됩니다. 마감 연장을 검토할 때 쓰세요. 조정값은 자동 저장됩니다.</dd>
+        <dt>지금 거리의 100명</dt><dd>현재 순간의 거리 인구 100명 환산. 연령/사는 곳/성별 탭 전환.</dd>
+        <dt>경쟁 지형</dt><dd>업종별 카드 가맹점 수 트리맵. 면적이 클수록 그 업종 가게가 많다는 뜻입니다.</dd>
+        <dt>안내문</dt><dd>[안내문 복사] 버튼 → 인스타 프로필·네이버 플레이스·예약 확인 문자에 그대로 붙여넣기.</dd>
+        <dt>요일 리듬</dt><dd>보드를 연 요일이 자동 기록됩니다. 일주일을 채우면 요일별 감이 생깁니다.</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h3>이 숫자를 믿어도 되는 범위</h3>
+      <ul>
+        <li>유동·소비는 <b>성수카페거리 전체</b> 기준입니다 — 우리 매장 방문객 수가 아니라 <b>상대 비교용</b>입니다.</li>
+        <li>카드소비는 <b>10분 스냅샷</b>이라 표본이 작습니다. 한 번의 수치보다 추세를 보세요.</li>
+        <li>곡선의 회색 밴드는 2026-08-31(월) 수집 기준선입니다. 주말은 다르게 움직입니다 — 옥색 점선(오늘 예측)을 우선하세요.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h3>문제가 생기면</h3>
+      <dl class="kv">
+        <dt>"갱신 실패"</dt><dd>① 키 오타 확인([키] 버튼) ② 인터넷 연결 확인 ③ 회사·기관 보안망이 http 요청을 막는 경우가 있습니다 — 휴대폰 핫스팟으로 열어 확인해 보세요.</dd>
+        <dt>키를 바꾸고 싶다</dt><dd>상단 [키] 버튼 → 새 키 입력 → 저장.</dd>
+        <dt>누적 기록 초기화</dt><dd>브라우저 설정에서 "사이트 데이터 삭제"를 하면 키·영업시간·누적 관측이 모두 지워집니다(파일 자체는 무관).</dd>
+        <dt>비교 핫플·갱신 주기 변경</dt><dd>파일을 메모장으로 열어 상단 <code>CONFIG</code>의 <code>COMPARE</code> 목록과 <code>INTERVAL_MIN</code>을 수정하면 됩니다.</dd>
+      </dl>
+    </section>
+
+  </div><!-- /pageManual -->
+
+  <footer>
+    <b>완전 독립 실행형</b> — 이 파일 하나로 동작합니다. 데이터는 서울시 열린데이터광장 <code>citydata</code> API를 브라우저에서 직접 호출(중계 서버·MCP 없음), 인증키·관측 이력은 이 브라우저에만 저장됩니다.<br>
+    출처 — 서울 열린데이터광장 실시간 도시데이터 「성수카페거리」 · 매장 정보 LCDC SEOUL 공식 · 행사 정보 서울문화포털<br>
+    한계 — 유동·소비는 거리 전체 기준(매장 방문객 아님) · 소비는 10분 표본 · 월요일 기준선은 2026-08-31 수집. 참고: 사내망·보안 프로그램이 http 요청을 막으면 갱신이 실패할 수 있습니다.
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ================= CONFIG ================= */
+var POI="성수카페거리";
+var COMPARE=["서울숲공원","연남동","압구정로데오거리","홍대 관광특구"]; /* 비교 핫플 — 서울시 공식 장소명 그대로 */
+var INTERVAL_MIN=10;
+var BRUNCH=[10,15];
+
+var NS="http://www.w3.org/2000/svg";
+function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)if(a[k]!=null)e.setAttribute(k,a[k]);return e;}
+var $=function(id){return document.getElementById(id);};
+function lsGet(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch(e){return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function fmtMan(v){return (Math.round(v/1000)/10).toFixed(1).replace(/\.0$/,"")+"만";}
+function pad2(n){return String(n).padStart(2,"0");}
+
+/* ================= 곡선 (월요일 기준선 + 라이브 예측) ================= */
+var pMin=[16000,24000,30000,32000,34000,36000,36000,36000,36000,32000,30000,28000,24000,20000,16000,12000,8000,7000,6500,6500,6500,6500,7500,12000,16000];
+var pMax=[18000,26000,32000,34000,36000,38000,38000,38000,38000,34000,32000,30000,26000,22000,18000,14000,8500,7500,7000,7000,7000,7000,8000,14000,18000];
+var mid=pMin.map(function(v,i){return (v+pMax[i])/2;});
+var H0=8,N=pMin.length;
+var open=9,close=17,LO_OFF=1;
+var sv=lsGet("jw_hours",null);
+if(sv&&sv.o>=8&&sv.c<=24&&sv.c-sv.o>=2){open=sv.o;close=sv.c;}
+
+var CW=1000,CH=380,mL=56,mR=20,mT=26,mB=46;
+var iw=CW-mL-mR,ih=CH-mT-mB,YMAX=40000;
+function cx(h){return mL+(h-H0)/(N-1)*iw;}
+function cy(v){return mT+(1-v/YMAX)*ih;}
+var svg=$("curve");
+svg.setAttribute("viewBox","0 0 "+CW+" "+CH);
+for(var v=0;v<=YMAX;v+=10000){
+  svg.appendChild(el("line",{x1:mL,y1:cy(v),x2:mL+iw,y2:cy(v),stroke:"var(--line)","stroke-width":1}));
+  var yl=el("text",{x:mL-10,y:cy(v)+4,"text-anchor":"end",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
+  yl.textContent=v===0?"0":(v/10000)+"만";svg.appendChild(yl);
+}
+for(var i=0;i<N;i+=2){
+  var xl=el("text",{x:cx(H0+i),y:mT+ih+22,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
+  xl.textContent=(H0+i)%24;svg.appendChild(xl);
+}
+var block=el("rect",{y:mT,height:ih,fill:"var(--jade-wash)"});
+var openEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
+var closeEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
+var loLine=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":1.4,"stroke-dasharray":"4 4",opacity:.75});
+var openGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
+var closeGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
+var blockLab=el("text",{y:mT+20,"text-anchor":"start",fill:"var(--jade-deep)","font-family":"var(--mono)","font-size":13,"font-weight":600});
+var loLab=el("text",{y:mT+ih-8,"text-anchor":"middle",fill:"var(--jade)","font-family":"var(--mono)","font-size":11});
+svg.appendChild(block);
+var band="";
+for(i=0;i<N;i++)band+=(i?"L":"M")+cx(H0+i)+" "+cy(pMax[i]);
+for(i=N-1;i>=0;i--)band+="L"+cx(H0+i)+" "+cy(pMin[i]);
+svg.appendChild(el("path",{d:band+"Z",fill:"var(--water-wash)"}));
+var top="";
+for(i=0;i<N;i++)top+=(i?"L":"M")+cx(H0+i)+" "+cy(pMax[i]);
+svg.appendChild(el("path",{d:top,fill:"none",stroke:"var(--water)","stroke-width":2,"stroke-linejoin":"round",opacity:.75}));
+var fcstPath=el("path",{fill:"none",stroke:"var(--jade)","stroke-width":3,"stroke-dasharray":"7 5","stroke-linejoin":"round"});
+svg.appendChild(fcstPath);
+var nowDot=el("circle",{r:5.5,fill:"var(--ink)",visibility:"hidden"});
+var nowLab=el("text",{fill:"var(--ink)","font-family":"var(--mono)","font-size":12,"font-weight":600});
+svg.appendChild(nowDot);svg.appendChild(nowLab);
+[openEdge,closeEdge,loLine,openGrip,closeGrip,blockLab,loLab].forEach(function(n){svg.appendChild(n);});
+
+function avgRange(a,b){var s=0,c=0;for(var h=a;h<b;h++){var ix=h-H0;if(ix>=0&&ix<N){s+=mid[ix];c++;}}return c?s/c:0;}
+var baseAvg=avgRange(9,17);
+function renderSim(){
+  var x0=cx(open),x1=cx(close);
+  block.setAttribute("x",x0);block.setAttribute("width",x1-x0);
+  openEdge.setAttribute("x1",x0);openEdge.setAttribute("x2",x0);
+  closeEdge.setAttribute("x1",x1);closeEdge.setAttribute("x2",x1);
+  openGrip.setAttribute("x",x0-7);closeGrip.setAttribute("x",x1-7);
+  var lo=close-LO_OFF,xl2=cx(lo);
+  loLine.setAttribute("x1",xl2);loLine.setAttribute("x2",xl2);
+  blockLab.setAttribute("x",x0+10);
+  blockLab.textContent="영업 "+pad2(open)+"–"+pad2(close%24)+"시";
+  loLab.setAttribute("x",xl2);loLab.textContent="L.O "+(lo%24)+"시";
+  $("oVal").textContent=pad2(open)+"시";$("cVal").textContent=pad2(close%24)+"시";
+  var a=avgRange(open,close),loV=mid[lo-H0]||0,aft=avgRange(close,close+2);
+  $("mAvg").innerHTML=fmtMan(a)+"<em> 명</em>";
+  $("mLo").innerHTML=fmtMan(loV)+"<em> 명</em>";
+  $("mAfter").innerHTML=fmtMan(aft)+"<em> 명</em>";
+  var t;
+  if(open===9&&close===17){
+    t="현재 영업시간 그대로입니다. 마감(17시) 후에도 두 시간 동안 평균 <b>"+fmtMan(aft)+" 명</b>이 거리에 남습니다.";
+  }else{
+    var d=a-baseAvg,sign=d>=0?"+":"−",ad=Math.abs(d);
+    var dTxt=ad>=10000?fmtMan(ad)+" 명":Math.round(ad/100)*100+"명";
+    t="기본(09–17시) 대비 영업 중 평균 유동 <b>"+sign+dTxt+"</b>. ";
+    t+=close>17?"연장한 저녁 구간은 인구가 내려가는 구간임을 감안하세요 — 객단가가 다르면 이야기가 달라집니다.":"단축·이동한 만큼 인력 계획도 함께 움직여야 합니다.";
+  }
+  $("simText").innerHTML=t;
+  lsSet("jw_hours",{o:open,c:close});
+}
+function setOpen(h){open=Math.max(8,Math.min(h,close-2));renderSim();}
+function setClose(h){close=Math.min(24,Math.max(h,open+2));renderSim();}
+$("oMinus").onclick=function(){setOpen(open-1);};
+$("oPlus").onclick=function(){setOpen(open+1);};
+$("cMinus").onclick=function(){setClose(close-1);};
+$("cPlus").onclick=function(){setClose(close+1);};
+function hourFromEvent(ev){var r=svg.getBoundingClientRect();var x=(ev.clientX-r.left)/r.width*CW;return Math.round((x-mL)/iw*(N-1))+H0;}
+function grip(node,isOpen){
+  node.addEventListener("pointerdown",function(ev){
+    node.setPointerCapture(ev.pointerId);
+    function mv(e){var h=hourFromEvent(e);if(isOpen)setOpen(h);else setClose(h);}
+    function up(){node.removeEventListener("pointermove",mv);node.removeEventListener("pointerup",up);}
+    node.addEventListener("pointermove",mv);node.addEventListener("pointerup",up);
+    ev.preventDefault();
+  });
+}
+grip(openGrip,true);grip(closeGrip,false);
+renderSim();
+
+/* ================= 아이소타입 ================= */
+var LENS={
+  age:{cap:"메뉴 사진·좌석 연출·SNS 언어의 기준 연령대입니다.",
+       segs:[["10대 이하",6,"#B9C4BE"],["20대",30,"var(--jade)"],["30대",22,"var(--jade-soft)"],["40대",15,"var(--water)"],["50대",13,"#8AA0AD"],["60대+",14,"#B9C4BE"]]},
+  res:{cap:"절반 이상이 방문객이면 단골 전략보다 '찾기 쉬움'과 첫인상이 매출을 좌우합니다.",
+       segs:[["동네 상주",44,"#8AA0AD"],["외지 방문",56,"var(--jade)"]]},
+  sex:{cap:"성별 구성입니다.",segs:[["여성",52,"var(--jade)"],["남성",48,"var(--water)"]]}
+};
+var curLens="age";
+function person(color){
+  var s=el("svg",{viewBox:"0 0 20 26"});
+  s.appendChild(el("circle",{cx:10,cy:6,r:5,fill:color}));
+  s.appendChild(el("path",{d:"M3 25 q0 -12 7 -12 q7 0 7 12 Z",fill:color}));
+  return s;
+}
+function drawLens(key){
+  curLens=key;
+  var isoHost=$("iso"),legHost=$("isoleg");
+  isoHost.innerHTML="";legHost.innerHTML="";
+  var colors=[];
+  LENS[key].segs.forEach(function(sg){
+    for(var i=0;i<sg[1];i++)colors.push(sg[2]);
+    var k=document.createElement("span");k.className="k";
+    var sw=document.createElement("i");sw.style.background=sg[2];
+    k.appendChild(sw);k.appendChild(document.createTextNode(sg[0]+" "));
+    var b=document.createElement("b");b.textContent=sg[1];k.appendChild(b);
+    legHost.appendChild(k);
+  });
+  colors.slice(0,100).forEach(function(c){isoHost.appendChild(person(c));});
+  $("isocap").textContent=LENS[key].cap;
+}
+var tabBtns=document.querySelectorAll(".tabs button");
+tabBtns.forEach(function(b){
+  b.addEventListener("click",function(){
+    tabBtns.forEach(function(x){x.setAttribute("aria-selected","false");});
+    b.setAttribute("aria-selected","true");drawLens(b.dataset.lens);
+  });
+});
+drawLens("age");
+function to100(vals){ /* [ [label,value,color] ] → 정수 합계 100 보정 */
+  var tot=vals.reduce(function(s,v){return s+v[1];},0)||1;
+  var out=vals.map(function(v){return [v[0],Math.round(v[1]/tot*100),v[2]];});
+  var diff=100-out.reduce(function(s,v){return s+v[1];},0);
+  out.sort(function(a,b){return b[1]-a[1];})[0][1]+=diff;
+  return out.filter(function(v){return v[1]>0;});
+}
+
+/* ================= 트리맵 ================= */
+var IND_BASE=[["한식",207],["기타요식",197],["일식·중식·양식",128],["패션·잡화",113],["스포츠·문화·레저",80],["제과·커피",77],["편의점",35],["할인점·슈퍼",21]];
+function worst(row,w){var s=row.reduce(function(a,r){return a+r.a;},0);var mx=Math.max.apply(null,row.map(function(r){return r.a;}));var mn=Math.min.apply(null,row.map(function(r){return r.a;}));return Math.max(w*w*mx/(s*s),s*s/(w*w*mn));}
+function layout(items,x,y,w,h,out){
+  if(!items.length)return;
+  var row=[items[0]],rest=items.slice(1),side=Math.min(w,h);
+  while(rest.length){var t=row.concat([rest[0]]);if(worst(t,side)<=worst(row,side)){row=t;rest=rest.slice(1);}else break;}
+  var s=row.reduce(function(a,r){return a+r.a;},0);
+  if(w>=h){var cw2=s/h,cy2=y;row.forEach(function(r){var rh=r.a/cw2;out.push({n:r.n,v:r.v,x:x,y:cy2,w:cw2,h:rh});cy2+=rh;});layout(rest,x+cw2,y,w-cw2,h,out);}
+  else{var ch=s/w,cx2=x;row.forEach(function(r){var rw=r.a/ch;out.push({n:r.n,v:r.v,x:cx2,y:y,w:rw,h:ch});cx2+=rw;});layout(rest,x,y+ch,w,h-ch,out);}
+}
+function drawTreemap(data){
+  var TW=460,TH=420,tm=$("tmap");
+  tm.setAttribute("viewBox","0 0 "+TW+" "+TH);tm.innerHTML="";
+  var total=data.reduce(function(s,d){return s+d[1];},0);
+  var items=data.map(function(d){return{n:d[0],v:d[1],a:d[1]/total*TW*TH};}).sort(function(a,b){return b.a-a.a;});
+  var rects=[];layout(items,0,0,TW,TH,rects);
+  rects.forEach(function(r){
+    var mine=r.n.indexOf("제과")===0;
+    tm.appendChild(el("rect",{x:r.x+2,y:r.y+2,width:Math.max(0,r.w-4),height:Math.max(0,r.h-4),fill:mine?"var(--jade)":"var(--surface-2)",stroke:mine?"var(--jade-deep)":"var(--line-2)","stroke-width":1}));
+    if(r.w>90&&r.h>44){
+      var t1=el("text",{x:r.x+14,y:r.y+30,fill:mine?"#fff":"var(--ink-2)","font-family":"var(--sans)","font-size":16,"font-weight":600});
+      t1.textContent=r.n;tm.appendChild(t1);
+      var t2=el("text",{x:r.x+14,y:r.y+52,fill:mine?"#fff":"var(--ink-3)","font-family":"var(--mono)","font-size":13});
+      t2.textContent=r.v+"곳";tm.appendChild(t2);
+    }else if(r.w>52&&r.h>26){
+      var t3=el("text",{x:r.x+8,y:r.y+20,fill:mine?"#fff":"var(--ink-3)","font-family":"var(--mono)","font-size":11});
+      t3.textContent=r.n+" "+r.v;tm.appendChild(t3);
+    }
+  });
+}
+drawTreemap(IND_BASE);
+
+/* ================= API ================= */
+var KEY=lsGet("jw_apikey","");
+var timer=null;
+/* 서울 열린데이터광장 API는 http(평문)만 제공하며, GitHub Pages는 https로만 서비스되어
+   브라우저가 이를 "Mixed Content"로 차단합니다. 아래 무료 CORS 프록시를 통해 https로 우회 호출합니다.
+   (API 키는 사용자의 브라우저 localStorage에만 저장되며, 저장소 코드에는 포함되지 않습니다.) */
+var CORS_PROXIES=[
+  "https://api.allorigins.win/raw?url=",
+  "https://corsproxy.io/?url="
+];
+function fetchViaProxy(target,i){
+  i=i||0;
+  if(i>=CORS_PROXIES.length)return Promise.reject(new Error("프록시 연결 실패 — 잠시 후 다시 시도해 주세요."));
+  var u=CORS_PROXIES[i]+encodeURIComponent(target);
+  return fetch(u).then(function(r){
+    if(!r.ok)throw new Error("proxy http "+r.status);
+    return r.json();
+  }).catch(function(){
+    return fetchViaProxy(target,i+1);
+  });
+}
+function api(service,arg){
+  var target="http://openapi.seoul.go.kr:8088/"+encodeURIComponent(KEY)+"/json/"+service+"/1/5/"+encodeURIComponent(arg);
+  return fetchViaProxy(target);
+}
+function setBadge(cls,txt){var b=$("liveBadge");b.className="livebadge"+(cls?" "+cls:"");b.innerHTML="<i></i>"+txt;}
+
+function refresh(){
+  if(!KEY){$("setup").hidden=false;setBadge("","키 없음");return;}
+  setBadge("","갱신 중…");
+  api("citydata",POI).then(function(j){
+    var cd=j&&j.CITYDATA;
+    if(!cd){
+      var msg=(j&&j.RESULT&&(j.RESULT["RESULT.MESSAGE"]||j.RESULT.MESSAGE))||(j&&j.MESSAGE)||"응답 형식 오류";
+      throw new Error(msg);
+    }
+    renderCity(cd);
+    setBadge("on","라이브");
+    var now=new Date();
+    $("datex").textContent=now.getFullYear()+"."+pad2(now.getMonth()+1)+"."+pad2(now.getDate())+" "+pad2(now.getHours())+":"+pad2(now.getMinutes())+" 갱신";
+    markWeek(now);
+    $("keyErr").hidden=true;$("setup").hidden=true;
+    fetchCompare();
+  }).catch(function(e){
+    setBadge("err","갱신 실패");
+    $("setup").hidden=false;
+    $("keyErr").hidden=false;
+    $("keyErr").textContent="호출 실패: "+e.message+" — 키가 맞는지, 네트워크가 http를 허용하는지 확인하세요.";
+  });
+}
+/* 핫플 비교 (본체 렌더 후 실행) */
+function fetchCompare(){
+  Promise.all(COMPARE.map(function(nm){
+    return api("citydata_ppltn",nm).then(function(j){
+      var r=j&&j["SeoulRtd.citydata_ppltn"];r=r&&r[0];
+      return r?{n:r.AREA_NM,lvl:r.AREA_CONGEST_LVL,mn:+r.AREA_PPLTN_MIN,mx:+r.AREA_PPLTN_MAX}:null;
+    }).catch(function(){return null;});
+  })).then(function(list){
+    if(!lastPop)return;
+    list=list.filter(Boolean);
+    list.push({n:POI,lvl:lastPop.lvl,mn:lastPop.mn,mx:lastPop.mx,me:true});
+    list.sort(function(a,b){return b.mx-a.mx;});
+    var host=$("cmpList");host.innerHTML="";
+    list.forEach(function(r,i){
+      var li=document.createElement("li");if(r.me)li.className="me";
+      li.innerHTML='<span class="rk">'+(i+1)+'</span><span class="nm">'+r.n+'</span><span class="vv">'+r.lvl+" · "+fmtMan(r.mx)+"</span>";
+      host.appendChild(li);
+    });
+  });
+}
+
+var lastPop=null;
+function renderCity(cd){
+  /* --- 인구 --- */
+  var p=(cd.LIVE_PPLTN_STTS||[])[0];
+  if(p){
+    lastPop={lvl:p.AREA_CONGEST_LVL,mn:+p.AREA_PPLTN_MIN,mx:+p.AREA_PPLTN_MAX};
+    $("lvPop").textContent=(+p.AREA_PPLTN_MIN/10000).toFixed(1)+"–"+(+p.AREA_PPLTN_MAX/10000).toFixed(1)+"만";
+    $("lvCongest").textContent=p.AREA_CONGEST_LVL;
+    /* 아이소타입 라이브 */
+    LENS.age.segs=to100([["10대 이하",(+p.PPLTN_RATE_0||0)+(+p.PPLTN_RATE_10||0),"#B9C4BE"],["20대",+p.PPLTN_RATE_20,"var(--jade)"],["30대",+p.PPLTN_RATE_30,"var(--jade-soft)"],["40대",+p.PPLTN_RATE_40,"var(--water)"],["50대",+p.PPLTN_RATE_50,"#8AA0AD"],["60대+",(+p.PPLTN_RATE_60||0)+(+p.PPLTN_RATE_70||0),"#B9C4BE"]]);
+    LENS.res.segs=to100([["동네 상주",+p.RESNT_PPLTN_RATE,"#8AA0AD"],["외지 방문",+p.NON_RESNT_PPLTN_RATE,"var(--jade)"]]);
+    LENS.sex.segs=to100([["여성",+p.FEMALE_PPLTN_RATE,"var(--jade)"],["남성",+p.MALE_PPLTN_RATE,"var(--water)"]]);
+    drawLens(curLens);
+    $("isoTime").textContent=(p.PPLTN_TIME||"").slice(11,16)+" 기준";
+    accumToday(p);
+    /* 예측 곡선 오버레이 */
+    var f=p.FCST_PPLTN||[],d="";
+    f.forEach(function(r){
+      var dt=new Date(r.FCST_TIME.replace(" ","T"));
+      var h=dt.getHours();if(h<H0)h+=24;
+      if(h<H0||h>H0+N-1)return;
+      var m2=((+r.FCST_PPLTN_MIN)+(+r.FCST_PPLTN_MAX))/2;
+      d+=(d?"L":"M")+cx(h)+" "+cy(Math.min(m2,YMAX));
+    });
+    fcstPath.setAttribute("d",d);
+    /* 현재 점 */
+    var nw=new Date(),nh=nw.getHours()+nw.getMinutes()/60;if(nh<H0)nh+=24;
+    if(nh>=H0&&nh<=H0+N-1){
+      var pm=(lastPop.mn+lastPop.mx)/2;
+      nowDot.setAttribute("cx",cx(nh));nowDot.setAttribute("cy",cy(Math.min(pm,YMAX)));
+      nowDot.setAttribute("visibility","visible");
+      nowLab.setAttribute("x",cx(nh)+9);nowLab.setAttribute("y",cy(Math.min(pm,YMAX))-9);
+      nowLab.textContent="지금";
+    }
+  }
+  /* --- 소비 --- */
+  var c=cd.LIVE_CMRCL_STTS;if(Array.isArray(c))c=c[0];
+  if(c){
+    $("lvPay").textContent=Math.round(+c.AREA_SH_PAYMENT_AMT_MIN/10000)+"–"+Math.round(+c.AREA_SH_PAYMENT_AMT_MAX/10000)+"만원";
+    $("lvLvl").textContent=c.AREA_CMRCL_LVL||"–";
+    $("lvCard").textContent=Math.round(+c.CMRCL_PERSONAL_RATE)+" : "+Math.round(+c.CMRCL_CORPORATION_RATE);
+    $("lvCnt").textContent=c.AREA_SH_PAYMENT_CNT;
+    var rsb=(c.CMRCL_RSB||[]).slice().sort(function(a,b){
+      var am=((+a.RSB_SH_PAYMENT_AMT_MIN)+(+a.RSB_SH_PAYMENT_AMT_MAX))/2;
+      var bm2=((+b.RSB_SH_PAYMENT_AMT_MIN)+(+b.RSB_SH_PAYMENT_AMT_MAX))/2;
+      return bm2-am;
+    });
+    var ih2=$("consInd");ih2.innerHTML="";
+    var mxr=rsb.length?((+rsb[0].RSB_SH_PAYMENT_AMT_MIN)+(+rsb[0].RSB_SH_PAYMENT_AMT_MAX))/2:1;
+    rsb.forEach(function(r){
+      var m3=((+r.RSB_SH_PAYMENT_AMT_MIN)+(+r.RSB_SH_PAYMENT_AMT_MAX))/2;
+      var mine=(r.RSB_MID_CTGR||"").indexOf("제과")===0;
+      var li=document.createElement("li");li.className="bar";
+      li.innerHTML='<span class="bn"'+(mine?' style="color:var(--jade-deep);font-weight:600"':'')+'>'+r.RSB_MID_CTGR+'</span><span class="track"><span class="fill'+(mine?' hi':'')+'" style="width:'+(m3/mxr*100)+'%"></span></span><span class="bv">'+Math.round(m3/10000)+'만원</span>';
+      ih2.appendChild(li);
+    });
+    /* 트리맵도 라이브 가맹점 수로 */
+    if(rsb.length>=4) drawTreemap(rsb.map(function(r){return [r.RSB_MID_CTGR.replace("/","·"),+r.RSB_MCT_CNT];}));
+    /* --- 자가 급증 --- */
+    var hist=lsGet("jw_hist",[]);
+    var nowT=Date.now();
+    var pm2=lastPop?(lastPop.mn+lastPop.mx)/2:null;
+    var am2=((+c.AREA_SH_PAYMENT_AMT_MIN)+(+c.AREA_SH_PAYMENT_AMT_MAX))/2;
+    var prev=null;
+    for(var q=hist.length-1;q>=0;q--){if(nowT-hist[q].t>=45*60000){prev=hist[q];break;}}
+    if(!prev&&hist.length)prev=hist[0];
+    var sh=$("selfSurge");
+    var surging=false;
+    if(prev&&pm2){
+      var dp=(pm2-prev.pm)/prev.pm*100;
+      var dc=prev.am?((am2-prev.am)/prev.am*100):null;
+      var ageMin=Math.round((nowT-prev.t)/60000);
+      sh.innerHTML="";
+      function row(nm2,val,th){
+        var li=document.createElement("li");
+        var up=val>=th;if(up){li.className="me";surging=true;}
+        li.innerHTML='<span class="rk">'+(up?"▲":"·")+'</span><span class="nm">'+nm2+'</span><span class="vv">'+(val>=0?"+":"")+val.toFixed(1)+"% / "+ageMin+"분 전 대비</span>";
+        sh.appendChild(li);
+      }
+      row("거리 유동인구",dp,20);
+      if(dc!=null)row("카드 소비",dc,30);
+    }
+    hist.push({t:nowT,pm:pm2,am:am2});
+    if(hist.length>48)hist=hist.slice(-48);
+    lsSet("jw_hist",hist);
+    updateVerdict(surging);
+  }
+  /* --- 날씨 --- */
+  var w=cd.WEATHER_STTS;if(Array.isArray(w))w=w[0];
+  if(w){
+    var pr=w.PRECIPITATION&&w.PRECIPITATION!=="-"?w.PRECIPITATION:null;
+    $("chipRain").textContent=pr?("비 "+pr):"강수 없음";
+    $("chipRain").className="chip"+(pr?" rain":"");
+    $("chipTemp").textContent=w.TEMP+"° ("+w.MIN_TEMP+"~"+w.MAX_TEMP+"°)";
+    $("chipHum").textContent="습도 "+w.HUMIDITY+"%";
+    $("chipAir").textContent="대기 "+(w.AIR_IDX||"–");
+    var f24=w.FCST24HOURS||[];
+    var ws=$("wxs");ws.innerHTML="";
+    var maxRain=0,rainHours=[];
+    f24.slice(0,24).forEach(function(r){
+      var h=+String(r.FCST_DT).slice(8,10);
+      var rc=+r.RAIN_CHANCE||0;
+      var cell=document.createElement("div");
+      cell.className="wxc"+(rc>=50?" wet":"")+((h>=BRUNCH[0]&&h<=BRUNCH[1])?" br":"");
+      cell.innerHTML='<span class="h">'+h+'시</span><span class="t">'+r.TEMP+'°</span><span class="r">'+(rc>0?rc+"%":"·")+'</span>';
+      ws.appendChild(cell);
+      if(rc>maxRain)maxRain=rc;
+      if(rc>=50&&h>=BRUNCH[0]&&h<=BRUNCH[1])rainHours.push(h);
+    });
+    if(rainHours.length){
+      $("wxCap").innerHTML="<b>브런치 창("+BRUNCH[0]+"–"+BRUNCH[1]+"시)에 강수확률 50% 이상인 시간: "+rainHours.join(", ")+"시.</b> 우산 보관·실내 회전 준비.";
+      $("advRain").hidden=false;
+      $("advRainH").textContent="비 오는 날, 자연광 대신 '오래 머무는 자리'를 판다";
+      $("advRainP").textContent="매장의 강점인 자연광이 죽는 날입니다. 우산 보관·비닐을 입구에, 따뜻한 음료 페어링을 전면에. 체류가 길어지므로 웨이팅 안내를 명확히 해야 회전 손실을 줄입니다.";
+      $("advRainW").textContent="근거 — 브런치 창 강수확률 최대 "+maxRain+"%";
+    }else{
+      $("wxCap").textContent="브런치 창("+BRUNCH[0]+"–"+BRUNCH[1]+"시) 강수확률 50% 미만 — 날씨 리스크 낮음.";
+      $("advRain").hidden=true;
+    }
+  }
+}
+/* ---- 오늘 다녀간 사람: 인구 가중 누적 ---- */
+var AGE_KEYS=[["10대 이하",["PPLTN_RATE_0","PPLTN_RATE_10"],"#B9C4BE"],["20대",["PPLTN_RATE_20"],"var(--jade)"],["30대",["PPLTN_RATE_30"],"var(--jade-soft)"],["40대",["PPLTN_RATE_40"],"var(--water)"],["50대",["PPLTN_RATE_50"],"#8AA0AD"],["60대+",["PPLTN_RATE_60","PPLTN_RATE_70"],"#B9C4BE"]];
+function accumToday(p){
+  var now=new Date();
+  var dkey=now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
+  var td=lsGet("jw_today",null);
+  if(!td||td.d!==dkey)td={d:dkey,n:0,w:0,age:[0,0,0,0,0,0],fem:0,vis:0,t0:null,t1:null};
+  /* 같은 PPLTN_TIME 재관측이면 중복 누적 방지 */
+  if(td.lastT===p.PPLTN_TIME){renderToday(td);return;}
+  td.lastT=p.PPLTN_TIME;
+  var wgt=((+p.AREA_PPLTN_MIN)+(+p.AREA_PPLTN_MAX))/2||1;
+  AGE_KEYS.forEach(function(a,i){
+    var r=a[1].reduce(function(s,k){return s+(+p[k]||0);},0);
+    td.age[i]+=r*wgt;
+  });
+  td.fem+=(+p.FEMALE_PPLTN_RATE||0)*wgt;
+  td.vis+=(+p.NON_RESNT_PPLTN_RATE||0)*wgt;
+  td.w+=wgt;td.n++;
+  var hm=pad2(now.getHours())+":"+pad2(now.getMinutes());
+  if(!td.t0)td.t0=hm;td.t1=hm;
+  lsSet("jw_today",td);
+  renderToday(td);
+}
+function renderToday(td){
+  if(!td.w)return;
+  var host=$("todayAge"),leg=$("todayAgeLeg");host.innerHTML="";leg.innerHTML="";
+  var vals=AGE_KEYS.map(function(a,i){return [a[0],td.age[i]/td.w,a[2]];});
+  var norm=to100(vals);
+  /* to100은 크기순 정렬을 반환 → 연령 순서로 되돌림 */
+  AGE_KEYS.map(function(a){return norm.filter(function(v){return v[0]===a[0];})[0];}).filter(Boolean).forEach(function(v){
+    var s=document.createElement("div");s.className="seg";s.style.width=v[1]+"%";
+    var col=AGE_KEYS.filter(function(a){return a[0]===v[0];})[0][2];
+    s.style.background=col;s.title=v[0]+" "+v[1]+"%";host.appendChild(s);
+    var t=document.createElement("span");t.className="k";
+    var sw=document.createElement("i");sw.style.background=col;
+    t.appendChild(sw);t.appendChild(document.createTextNode(v[0]+" "));
+    var b=document.createElement("b");b.textContent=v[1]+"%";t.appendChild(b);
+    leg.appendChild(t);
+  });
+  $("todayMeta").textContent=td.n+"회 관측 · "+td.t0+"–"+td.t1;
+  $("todayCap").innerHTML="오늘 누적 기준 여성 <b>"+Math.round(td.fem/td.w)+"%</b> · 외지 방문 <b>"+Math.round(td.vis/td.w)+"%</b>. 사람이 많던 시간대가 더 무겁게 반영된 가중 평균입니다"+(td.n<6?" — 아직 관측이 적어 오후로 갈수록 정확해집니다.":".");
+}
+
+function updateVerdict(surging){
+  var v=$("verdict"),pill=$("vpill"),tx=$("vtext");
+  if(surging){
+    v.classList.add("surging");pill.textContent="증량 검토";
+    tx.innerHTML="<b>성수카페거리 지표가 직전 대비 급증 중입니다.</b> 평소보다 빠르게 사람이 몰리는 중 — 재료·인력 여유분을 점검하세요.";
+  }else{
+    v.classList.remove("surging");pill.textContent="준비량 유지";
+    tx.innerHTML="지표가 평일 패턴 범위 안입니다. 손님 수보다 <b>좌석 회전과 체류 시간 관리</b>가 오늘 매출을 정합니다.";
+  }
+}
+
+/* 요일 수집 자동 기록 */
+var DAYS=["일","월","화","수","목","금","토"];
+function markWeek(now){
+  var seen=lsGet("jw_days",{});
+  seen[now.getDay()]=now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
+  lsSet("jw_days",seen);drawWeek();
+}
+function drawWeek(){
+  var seen=lsGet("jw_days",{}),host=$("week");host.innerHTML="";
+  [1,2,3,4,5,6,0].forEach(function(d){
+    var div=document.createElement("div");
+    div.className="day"+(seen[d]?" have":"");
+    div.innerHTML='<span class="dn">'+DAYS[d]+'</span><span class="ds">'+(seen[d]?String(seen[d]).slice(5):"—")+'</span>';
+    host.appendChild(div);
+  });
+}
+drawWeek();
+
+/* 키 관리 + 자동 갱신 */
+function startTimer(){
+  if(timer)clearInterval(timer);
+  timer=setInterval(refresh,INTERVAL_MIN*60000);
+  $("autoTxt").textContent=INTERVAL_MIN+"분마다 자동 갱신";
+}
+$("refreshBtn").onclick=refresh;
+$("keyBtn").onclick=function(){$("setup").hidden=!$("setup").hidden;if(!$("setup").hidden)$("keyInput").focus();};
+$("keySave").onclick=function(){
+  var k=$("keyInput").value.trim();
+  if(!k){$("keyErr").hidden=false;$("keyErr").textContent="키를 입력하세요.";return;}
+  KEY=k;lsSet("jw_apikey",k);refresh();
+};
+$("keyInput").addEventListener("keydown",function(e){if(e.key==="Enter")$("keySave").click();});
+
+/* 복사 */
+$("copybtn").addEventListener("click",function(){
+  var txt=$("copysrc").innerText;
+  function done(){$("copymsg").style.opacity=1;setTimeout(function(){$("copymsg").style.opacity=0;},2200);}
+  function fb(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,fb);}else fb();
+});
+
+/* 페이지 탭 */
+var navBtns=document.querySelectorAll(".nav button");
+navBtns.forEach(function(b){
+  b.addEventListener("click",function(){
+    navBtns.forEach(function(x){x.setAttribute("aria-selected","false");});
+    b.setAttribute("aria-selected","true");
+    document.querySelectorAll(".page").forEach(function(pg){pg.classList.remove("on");});
+    $(b.dataset.page).classList.add("on");
+    window.scrollTo(0,0);
+  });
+});
+
+/* 오늘 누적 저장분 초기 표시 */
+(function(){var td=lsGet("jw_today",null);if(td&&td.w)renderToday(td);})();
+
+/* 부팅 */
+if(KEY){refresh();startTimer();}
+else{$("setup").hidden=false;setBadge("","키 없음");}
+})();
+</script>
+</body>
+</html>
