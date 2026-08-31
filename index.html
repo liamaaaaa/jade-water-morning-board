@@ -679,13 +679,14 @@ var timer=null;
    브라우저가 이를 "Mixed Content"로 차단합니다. 아래 무료 CORS 프록시를 통해 https로 우회 호출합니다.
    (API 키는 사용자의 브라우저 localStorage에만 저장되며, 저장소 코드에는 포함되지 않습니다.) */
 var CORS_PROXIES=[
-  "https://api.allorigins.win/raw?url=",
-  "https://corsproxy.io/?url="
+  function(t){return "https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(t);},
+  function(t){return "https://api.allorigins.win/raw?url="+encodeURIComponent(t);},
+  function(t){return "https://thingproxy.freeboard.io/fetch/"+t;}
 ];
 function fetchViaProxy(target,i){
   i=i||0;
   if(i>=CORS_PROXIES.length)return Promise.reject(new Error("프록시 연결 실패 — 잠시 후 다시 시도해 주세요."));
-  var u=CORS_PROXIES[i]+encodeURIComponent(target);
+  var u=CORS_PROXIES[i](target);
   return fetch(u).then(function(r){
     if(!r.ok)throw new Error("proxy http "+r.status);
     return r.json();
