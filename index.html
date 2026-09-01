@@ -109,9 +109,14 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .livebadge.err i{background:var(--rain)}
 .lvh{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink-2)}
 .lvh .sup{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--ink-3);margin-left:8px}
+.signalgrp{display:flex;flex-direction:column;gap:8px}
+.signalgrp+.signalgrp{margin-top:16px}
+.sglabel{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--jade)}
 .reads{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);background:var(--surface)}
 .read{flex:1 1 128px;padding:12px 16px;border-right:1px solid var(--line)}
 .read:last-child{border-right:0}
+.read.main{background:var(--jade-wash)}
+.read.main .rv{font-size:22px;font-weight:700;color:var(--jade-deep)}
 .mlabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:4px}
 .rv{font-family:var(--mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
 .rv.up{color:var(--jade)} .rv.down{color:var(--rain)}
@@ -131,6 +136,18 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .surge li .vv{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .surge li.me{border-color:var(--jade);background:var(--jade-wash)}
 .surge li.me .nm{color:var(--jade-deep);font-weight:700}
+
+/* 교통·주차·문화행사 */
+.infoli{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.infoli li{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13.5px;padding:8px 10px;background:var(--inset);border:1px solid var(--line)}
+.infoli .nm{font-weight:500}
+.infoli .vv{font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap;text-align:right}
+.eventcard{border:1px solid var(--line);background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:5px}
+.eventcard+.eventcard{margin-top:10px}
+.eventcard h3{font-family:var(--disp);font-size:15.5px;margin:0}
+.eventcard p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.eventcard a{color:var(--jade);font-size:12.5px;font-weight:600}
+.eventempty{font-size:13.5px;color:var(--ink-3)}
 
 /* weather strip */
 .wxs{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
@@ -221,15 +238,15 @@ footer a{color:var(--water)}
 
   <header class="head">
     <div class="brand">
-      <h1>제이드앤워터 모닝보드</h1>
-      <p>성수 LCDC점 · A동 4층 · <b>09:00–17:00</b> (L.O 16:00) · 연중무휴</p>
+      <h1 id="storeName">상권 리포트</h1>
+      <p id="storeSub">분석할 상권을 선택하세요</p>
     </div>
     <div class="head-right">
       <div class="headctl">
         <span class="livebadge" id="liveBadge"><i></i>대기</span>
         <span class="datex" id="datex">데이터 없음</span>
         <button class="btn" id="refreshBtn">지금 갱신</button>
-        <button class="btn ghost" id="keyBtn" title="API 키 설정">키</button>
+        <button class="btn ghost" id="storeBtn" title="상권 설정">상권</button>
       </div>
       <div class="wx">
         <span class="chip" id="chipRain">–</span>
@@ -247,34 +264,49 @@ footer a{color:var(--water)}
 
   <div class="page on" id="pageBoard">
 
-  <div class="setup" id="setup" hidden>
-    <h2>서울시 열린데이터광장 인증키가 필요합니다 (무료)</h2>
-    <p>이 보드는 MCP·중계 서버 없이 <b>서울시 공공 API를 브라우저에서 직접</b> 호출합니다.
-       <a href="https://data.seoul.go.kr" target="_blank" rel="noopener">data.seoul.go.kr</a> 가입 → 마이페이지 → <b>인증키 신청(일반 인증키)</b> → 발급된 키를 아래에 붙여넣으세요. 키는 이 브라우저에만 저장됩니다.</p>
+  <div class="setup" id="storeSetup" hidden>
+    <h2>상권 설정</h2>
+    <p>서울시가 실시간 데이터를 제공하는 <b>121개 주요 상권</b> 중 분석할 곳을 고르세요. 인증키·중계 서버는 이미 연결돼 있어 이것만 고르면 바로 보입니다.</p>
     <div class="keyrow">
-      <input id="keyInput" type="text" placeholder="발급받은 인증키 붙여넣기" autocomplete="off" spellcheck="false">
-      <button class="btn" id="keySave">저장하고 불러오기</button>
+      <select id="areaSel" style="flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)"></select>
+      <button class="btn" id="storeSave">저장하고 불러오기</button>
     </div>
-    <p class="err" id="keyErr" hidden></p>
   </div>
 
   <div class="verdict" id="verdict">
     <span class="vpill" id="vpill">판단 대기</span>
-    <p id="vtext">키를 등록하면 실시간 데이터로 오늘의 판단이 채워집니다.</p>
+    <p id="vtext">잠시 후 실시간 데이터로 오늘의 판단이 채워집니다.</p>
   </div>
+
+  <section class="card" id="digestCard">
+    <div class="ct">
+      <h2>상권 진단 요약</h2>
+      <span class="sub">지금 받아온 데이터를 한 문단으로 종합</span>
+    </div>
+    <p id="digestText" style="font-size:14.5px;line-height:1.75;color:var(--ink)">잠시 후 유동인구·소비·경쟁 구조·날씨를 종합한 요약이 여기 표시됩니다.</p>
+    <p class="cap">임대료·상권 성장 단계 등은 이 API에 없어 요약에서 제외했습니다 — 아래 항목은 모두 서울 열린데이터광장 실시간 값 기준입니다.</p>
+  </section>
 
   <section class="card">
     <div class="ct">
       <h2>실시간 상권 신호</h2>
       <span class="sub" id="liveTime">–</span>
     </div>
-    <div class="reads">
-      <div class="read"><span class="mlabel">거리 유동인구</span><div class="rv" id="lvPop">–</div></div>
-      <div class="read"><span class="mlabel">혼잡도</span><div class="rv" id="lvCongest">–</div></div>
-      <div class="read"><span class="mlabel">카드소비 (10분)</span><div class="rv" id="lvPay">–</div></div>
-      <div class="read"><span class="mlabel">직전 관측 대비</span><div class="rv" id="lvDelta">–</div></div>
-      <div class="read"><span class="mlabel">상권 활발도</span><div class="rv" id="lvLvl">–</div></div>
-      <div class="read"><span class="mlabel">개인 : 법인</span><div class="rv" id="lvCard">–</div></div>
+    <div class="signalgrp">
+      <div class="sglabel">인구</div>
+      <div class="reads">
+        <div class="read main"><span class="mlabel">거리 유동인구</span><div class="rv" id="lvPop">–</div></div>
+        <div class="read"><span class="mlabel">혼잡도</span><div class="rv" id="lvCongest">–</div></div>
+        <div class="read"><span class="mlabel">직전 관측 대비</span><div class="rv" id="lvDelta">–</div></div>
+      </div>
+    </div>
+    <div class="signalgrp">
+      <div class="sglabel">소비</div>
+      <div class="reads">
+        <div class="read main"><span class="mlabel">카드소비 (10분)</span><div class="rv" id="lvPay">–</div></div>
+        <div class="read"><span class="mlabel">상권 활발도</span><div class="rv" id="lvLvl">–</div></div>
+        <div class="read"><span class="mlabel">개인 : 법인</span><div class="rv" id="lvCard">–</div></div>
+      </div>
     </div>
     <div class="grid2">
       <div>
@@ -290,7 +322,7 @@ footer a{color:var(--water)}
     </div>
     <div class="grid2">
       <div class="surge">
-        <h3 class="lvh">성수 자가 급증 감지 <span class="sup">직전 관측 대비</span></h3>
+        <h3 class="lvh">자가 급증 감지 <span class="sup">직전 관측 대비</span></h3>
         <ol id="selfSurge"><li><span class="rk">·</span><span class="nm">두 번째 갱신부터 계산됩니다</span><span class="vv">–</span></li></ol>
       </div>
       <div class="surge">
@@ -303,14 +335,60 @@ footer a{color:var(--water)}
 
   <section class="card">
     <div class="ct">
+      <h2>최근 추이</h2>
+      <span class="sub" id="trendSub">이 보드를 켜둔 동안 직접 수집한 실측 기록</span>
+    </div>
+    <svg id="trendCurve" role="img" aria-label="최근 시간대별 유동인구·카드소비 추이"></svg>
+    <p class="cap" id="trendCap">보드 탭을 열어두거나 가끔이라도 다시 열어 갱신되면(10분마다) 기록이 쌓입니다. 이 브라우저의 localStorage에 최대 7일치까지 저장되며(사이트 데이터를 지우지 않는 한 새로고침해도 유지됨), 이후 오래된 기록부터 자동 삭제업니다. 요일별 과거 기준선이 아니라 <b>이 브라우저에서 직접 관측한 실측치</b>입니다.</p>
+  </section>
+
+  <section class="card">
+    <div class="ct">
+      <h2>대중교통·도로 접근성</h2>
+      <span class="sub">지하철·버스·자동차로 오기 얼마나 좋은가</span>
+    </div>
+    <div class="signalgrp">
+      <div class="sglabel">지하철</div>
+      <ul class="infoli" id="subList"><li><span class="nm">–</span></li></ul>
+    </div>
+    <div class="signalgrp">
+      <div class="sglabel">버스·도로</div>
+      <div class="reads">
+        <div class="read"><span class="mlabel">인근 버스정류장</span><div class="rv" id="busCnt">–</div></div>
+        <div class="read"><span class="mlabel">도로 소통</span><div class="rv" id="roadIdx">–</div></div>
+        <div class="read"><span class="mlabel">평균 속도</span><div class="rv" id="roadSpd">–</div></div>
+      </div>
+    </div>
+    <p class="cap" id="transCap">잠시 후 지하철 실시간 도착·버스 승하차·도로 소통이 표시됩니다.</p>
+  </section>
+
+  <section class="card">
+    <div class="ct">
+      <h2>인근 주차장</h2>
+      <span class="sub">요금·수용 대수 기준 (실시간 잔여석은 이 API에 없음)</span>
+    </div>
+    <ul class="infoli" id="prkList"><li><span class="nm">–</span></li></ul>
+    <p class="cap" id="prkCap">–</p>
+  </section>
+
+  <section class="card" id="eventCard">
+    <div class="ct">
+      <h2>오늘의 문화행사</h2>
+      <span class="sub">서울시 문화행사 정보 · 이 상권 반경 기준</span>
+    </div>
+    <div id="eventList"></div>
+  </section>
+
+  <section class="card">
+    <div class="ct">
       <h2>오늘 시간대별 날씨</h2>
       <span class="sub">강수확률·기온 · 노란 테두리 = 브런치 창</span>
     </div>
     <div class="wxs" id="wxs"></div>
-    <p class="cap" id="wxCap">키 등록 후 24시간 예보가 표시됩니다.</p>
+    <p class="cap" id="wxCap">잠시 후 24시간 예보가 표시됩니다.</p>
   </section>
 
-  <section class="card">
+  <section class="card" id="curveCard">
     <div class="ct">
       <h2>수요 곡선 위의 우리 영업시간</h2>
       <span class="sub">회색 밴드 = 월요일 기준선 · 옥색 점선 = 오늘 실시간 예측</span>
@@ -332,7 +410,11 @@ footer a{color:var(--water)}
       </div>
     </div>
     <p class="simnote" id="simText"></p>
-    <p class="cap">블록 경계 드래그 또는 +/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 성수카페거리 전체 유동(우리 매장 방문객 아님) — 상대 비교용입니다.</p>
+    <p class="cap" id="curveCap">블록 경계 드래그 또는 +/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 선택한 상권 전체 유동(우리 매장 방문객 아님) — 상대 비교용입니다.</p>
+  </section>
+  <section class="card" id="curveFallback" hidden>
+    <div class="ct"><h2>수요 곡선 위의 우리 영업시간</h2></div>
+    <p class="cap">선택하신 상권은 아직 요일별 기준선(과거 패턴) 데이터가 준비되지 않았습니다. 실시간 유동인구·혼잡도는 위 "실시간 상권 신호"에서 계속 확인할 수 있어요. 기준선은 현재 <b>성수카페거리</b>만 지원합니다.</p>
   </section>
 
   <section>
@@ -341,23 +423,17 @@ footer a{color:var(--water)}
       <span class="sub" style="font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto">데이터에서 자동 도출</span>
     </div>
     <div class="advice" id="advice">
-      <div class="adv a-warn">
-        <span class="tag">영업시간</span>
-        <h3>16시 라스트오더 순간의 거리 인구를 확인하라</h3>
-        <p>월요일 기준 하루 정점(13–16시)이 끝나는 지점에서 문을 닫습니다. 위 시뮬레이터에서 마감 연장의 크기를 가늠해 보세요. 오늘 예측(옥색 점선)이 기준선과 다르게 움직이면 그쪽을 믿으세요.</p>
-        <span class="why">근거 — 월요일 기준선 16시 유동 36–38천</span>
+      <div class="adv a-warn" id="advCongest">
+        <span class="tag">혼잡도</span>
+        <h3 id="advCongestH">데이터 대기</h3>
+        <p id="advCongestP">잠시 후 실시간 혼잡도 기반 조언이 표시됩니다.</p>
+        <span class="why" id="advCongestW">–</span>
       </div>
-      <div class="adv a-jade">
-        <span class="tag">연계</span>
-        <h3>10월 2일까지, 옆 건물에 무료 전시가 있다</h3>
-        <p>우란문화재단 「안식의 결 Texture of Rest」 — 무료·전연령, 같은 도보권. 전시 리플릿 지참 혜택 같은 가벼운 연계가 신규 유입 장치로 가장 쌉니다.</p>
-        <span class="why">근거 — 2026.07.24–10.02 · 우란1경·2경</span>
-      </div>
-      <div class="adv a-water">
+      <div class="adv a-jade" id="advVisit">
         <span class="tag">손님</span>
-        <h3>손님 절반 이상이 초행길이다</h3>
-        <p>거리 인구의 절반 이상이 외지 방문객입니다(실시간 수치는 '지금 거리의 100명' 참고). 4층 매장은 목적 방문이 필수 — 아래 안내문을 프로필에 붙여넣으세요.</p>
-        <span class="why">근거 — 비상주 비율 실시간 · LCDC 연 100만+ 방문</span>
+        <h3 id="advVisitH">데이터 대기</h3>
+        <p id="advVisitP">잠시 후 방문객 구성 기반 조언이 표시됩니다.</p>
+        <span class="why" id="advVisitW">–</span>
       </div>
       <div class="adv a-rain" id="advRain" hidden>
         <span class="tag">날씨</span>
@@ -384,18 +460,16 @@ footer a{color:var(--water)}
     <section class="card">
       <div class="ct"><h2>이 골목의 경쟁 지형</h2><span class="sub">카드 가맹점 수</span></div>
       <svg id="tmap" role="img" aria-label="업종별 가맹점 수 트리맵"></svg>
-      <p class="cap" id="tmapCap">면적 = 가맹점 수. 우리가 속한 <b>제과·커피</b>(옥색) 비중을 봅니다. 성수는 식사 업종이 훨씬 두꺼운 상권 — 브런치의 실제 경쟁자는 옆 카페가 아니라 <b>점심 식당</b>입니다.</p>
+      <p class="cap" id="tmapCap">면적 = 가맹점 수. 이 상권에서 어떤 업종이 두꺼운지 한눈에 봅니다.</p>
     </section>
   </div>
 
   <section class="card">
-    <div class="ct"><h2>손님에게 보낼 안내문</h2><span class="sub">프로필·플레이스·예약 확인 문자용</span></div>
-    <div class="copybox" id="copysrc">📍 <b>제이드앤워터 성수 LCDC점</b> — LCDC SEOUL A동 4층<br>
-🚇 성수역(2호선) 3번 출구 도보 8분 · 🚲 따릉이 '4377 우영테크노센터 앞' 대여소에서 도보 3분<br>
-🚗 주차보다 대중교통을 권해요 (성수 일대 방문객 주차 매우 제한적)<br>
-⏰ 연중무휴 09:00–17:00 · 라스트오더 16:00 · 올데이 브런치</div>
+    <div class="ct"><h2>손님에게 보낼 안내문</h2><span class="sub">프로필·플레이스·예약 확인 문자용 · 직접 수정 가능</span></div>
+    <textarea id="copysrc" rows="5" style="width:100%;font-family:var(--sans);font-size:13.5px;line-height:1.75;color:var(--ink-2);background:var(--inset);border:1px dashed var(--line-2);padding:14px 16px;resize:vertical" placeholder="📍 매장 이름 — 위치&#10;🚇 오시는 길&#10;🚗 주차 안내&#10;⏰ 영업시간"></textarea>
     <div class="copyrow">
       <button class="btn" id="copybtn">안내문 복사</button>
+      <button class="btn ghost" id="copySave">저장</button>
       <span id="copymsg">복사됐습니다 — 그대로 붙여넣으세요</span>
     </div>
   </section>
@@ -412,17 +486,12 @@ footer a{color:var(--water)}
 
     <section class="card">
       <h3>이 보드는 무엇인가</h3>
-      <p>제이드앤워터 성수 LCDC점을 위한 <b>아침 운영 대시보드</b>입니다. 서울시가 공개하는 성수카페거리 실시간 데이터(유동인구·카드소비·날씨·예측)를 이 파일이 직접 받아와, "오늘 얼마나 준비할지"와 "몇 시가 승부처인지"를 한 화면으로 보여줍니다. 설치·서버·구독이 전혀 없고, <b>이 HTML 파일 하나</b>로 동작합니다.</p>
+      <p>내 매장을 위한 <b>아침 운영 대시보드</b>입니다. 상단 [상권] 버튼에서 분석할 상권(121곳 중 하나)을 고르면, 서울시가 공개하는 그 상권의 실시간 데이터(유동인구·카드소비·교통·문화행사·날씨·예측)를 보여줍니다. 인증키와 중계 서버는 이미 연결돼 있어 <b>상권 선택 하나로 바로</b> 작동합니다.</p>
     </section>
 
     <section class="card">
-      <h3>처음 한 번 — 인증키 발급 (약 5분, 무료)</h3>
-      <ol>
-        <li><span class="step">1</span><b>data.seoul.go.kr</b>(서울 열린데이터광장) 회원가입 후 로그인</li>
-        <li><span class="step">2</span>마이페이지 → <b>인증키 신청</b> → "일반 인증키" 발급 (사용 용도는 간단히 적으면 됩니다)</li>
-        <li><span class="step">3</span>발급된 키를 복사해 보드 상단 <b>[키]</b> 버튼 → 입력창에 붙여넣고 <b>[저장하고 불러오기]</b></li>
-      </ol>
-      <p style="margin-top:6px">키는 이 컴퓨터의 이 브라우저에만 저장됩니다. 다른 컴퓨터·폰에서 열면 그 기기에서 한 번 더 넣어야 합니다.</p>
+      <h3>처음 한 번 — 다 되어 있어요</h3>
+      <p>이 파일에는 인증키 입력이 따로 없습니다. 데이터는 이미 연결된 Cloudflare Worker(중계 서버)가 대신 받아와서 이 화면에 전달합니다. 그냥 열어서 <b>[상권]</b> 버튼으로 원하는 곳만 고르면 됩니다.</p>
     </section>
 
     <section class="card">
@@ -441,8 +510,9 @@ footer a{color:var(--water)}
       <dl class="kv">
         <dt>실시간 상권 신호</dt><dd>거리 유동인구·혼잡도·10분 카드소비. "직전 관측 대비"는 이 보드가 직접 계산한 증감률입니다.</dd>
         <dt>오늘 다녀간 사람</dt><dd>갱신 때마다 거리 인구 구성을 누적한 <b>오늘 하루의 방문객 프로필</b>. 사람이 많던 시간대가 더 무겁게 반영됩니다. 저녁에 볼수록 정확해집니다.</dd>
-        <dt>성수 자가 급증 감지</dt><dd>약 45분 전 관측 대비 <b>인구 +20% 또는 소비 +30%</b>면 ▲ 표시와 함께 상단 판단이 '증량 검토'로 자동 전환됩니다.</dd>
-        <dt>핫플 실시간 비교</dt><dd>서울숲·연남동·압구정로데오·홍대와 지금 이 순간의 유동인구를 비교합니다. 성수 줄이 옥색입니다.</dd>
+        <dt>자가 급증 감지</dt><dd>약 45분 전 관측 대비 <b>인구 +20% 또는 소비 +30%</b>면 ▲ 표시와 함께 상단 판단이 '증량 검토'로 자동 전환됩니다.</dd>
+        <dt>최근 추이</dt><dd>이 브라우저에 최대 7일치까지 쌓이는 <b>실측 기록</b>입니다(새로고침해도 유지, 사이트 데이터 삭제 시에만 초기화). 121곳 어디를 고르든 표시되며, 요일별 과거 기준선과는 다른 데이터입니다.</dd>
+        <dt>핫플 실시간 비교</dt><dd>같은 카테고리의 다른 상권들과 지금 이 순간의 유동인구를 비교합니다. 내 상권 줄이 옥색입니다.</dd>
         <dt>수요 곡선·시뮬레이터</dt><dd>옥색 블록이 영업시간(기본 09–17시). 블록 경계를 드래그하거나 +/− 버튼으로 바꾸면 "영업 중 평균 유동"이 다시 계산됩니다. 마감 연장을 검토할 때 쓰세요. 조정값은 자동 저장됩니다.</dd>
         <dt>지금 거리의 100명</dt><dd>현재 순간의 거리 인구 100명 환산. 연령/사는 곳/성별 탭 전환.</dd>
         <dt>경쟁 지형</dt><dd>업종별 카드 가맹점 수 트리맵. 면적이 클수록 그 업종 가게가 많다는 뜻입니다.</dd>
@@ -454,7 +524,7 @@ footer a{color:var(--water)}
     <section class="card">
       <h3>이 숫자를 믿어도 되는 범위</h3>
       <ul>
-        <li>유동·소비는 <b>성수카페거리 전체</b> 기준입니다 — 우리 매장 방문객 수가 아니라 <b>상대 비교용</b>입니다.</li>
+        <li>유동·소비는 <b>선택한 상권 전체</b> 기준입니다 — 우리 매장 방문객 수가 아니라 <b>상대 비교용</b>입니다.</li>
         <li>카드소비는 <b>10분 스냅샷</b>이라 표본이 작습니다. 한 번의 수치보다 추세를 보세요.</li>
         <li>곡선의 회색 밴드는 2026-08-31(월) 수집 기준선입니다. 주말은 다르게 움직입니다 — 옥색 점선(오늘 예측)을 우선하세요.</li>
       </ul>
@@ -463,18 +533,46 @@ footer a{color:var(--water)}
     <section class="card">
       <h3>문제가 생기면</h3>
       <dl class="kv">
-        <dt>"갱신 실패"</dt><dd>① 키 오타 확인([키] 버튼) ② 인터넷 연결 확인 ③ 회사·기관 보안망이 http 요청을 막는 경우가 있습니다 — 휴대폰 핫스팟으로 열어 확인해 보세요.</dd>
-        <dt>키를 바꾸고 싶다</dt><dd>상단 [키] 버튼 → 새 키 입력 → 저장.</dd>
-        <dt>누적 기록 초기화</dt><dd>브라우저 설정에서 "사이트 데이터 삭제"를 하면 키·영업시간·누적 관측이 모두 지워집니다(파일 자체는 무관).</dd>
-        <dt>비교 핫플·갱신 주기 변경</dt><dd>파일을 메모장으로 열어 상단 <code>CONFIG</code>의 <code>COMPARE</code> 목록과 <code>INTERVAL_MIN</code>을 수정하면 됩니다.</dd>
+        <dt>"갱신 실패"</dt><dd>Cloudflare Worker가 잠깐 응답하지 않거나 인증키(SEOUL_KEY) 설정이 빠진 경우입니다. Worker 대시보드에서 Settings → Variables and secrets에 SEOUL_KEY가 있는지 확인하세요.</dd>
+        <dt>Worker 주소를 바꾸고 싶다</dt><dd>파일을 메모장으로 열어 <code>CONFIG</code> 근처의 <code>WORKER_URL</code> 값을 새 Worker 주소로 바꾸면 됩니다.</dd>
+        <dt>누적 기록 초기화</dt><dd>브라우저 설정에서 "사이트 데이터 삭제"를 하면 이 브라우저 쪽 누적 관측이 지워집니다(Worker의 KV 저장분은 별도라 안 지워집니다). 서버쪽까지 지우려면 Cloudflare KV 대시보드에서 직접 삭제해야 합니다.</dd>
+        <dt>비교 핫플·갱신 주기 변경</dt><dd>파일을 메모장으로 열어 상단 <code>CONFIG</code>의 <code>INTERVAL_MIN</code>을 수정하면 됩니다. 비교 상권은 같은 카테고리에서 자동으로 골라집니다.</dd>
       </dl>
+    </section>
+
+    <section class="card">
+      <h3>Worker를 다시 만들거나 다른 상권용으로 새로 하나 더 만들고 싶다면</h3>
+      <p>무료 공개 프록시는 예고 없이 멈추거나 막히는 경우가 잦습니다. Cloudflare Workers로 내 소유의 중계 주소를 하나 만들어두면 이런 문제가 사라집니다.</p>
+      <ol>
+        <li><span class="step">1</span><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a>에서 무료 계정 가입</li>
+        <li><span class="step">2</span>왼쪽 메뉴 <b>Workers & Pages</b> → <b>Create</b> → <b>Create Worker</b> 선택 (이름은 아무거나, 예: <code>jw-proxy</code>)</li>
+        <li><span class="step">3</span><b>Deploy</b>로 일단 기본 상태로 배포한 뒤, <b>Edit code</b>(코드 편집) 클릭</li>
+        <li><span class="step">4</span>편집기 안의 기존 코드를 전부 지우고 아래 코드를 붙여넣기:
+          <br><code style="display:block;white-space:pre-wrap;margin-top:6px;padding:10px;background:var(--inset);border:1px solid var(--line)">export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get("url");
+    if (!target) return new Response("Missing url", {status:400});
+    const resp = await fetch(target);
+    const body = await resp.arrayBuffer();
+    return new Response(body, {
+      status: resp.status,
+      headers: {"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+    });
+  }
+}</code></li>
+        <li><span class="step">5</span>오른쪽 위 <b>Deploy</b> 클릭 → 완료되면 <code>https://jw-proxy.내계정.workers.dev</code> 같은 주소가 생깁니다</li>
+        <li><span class="step">6</span>이 보드로 돌아와 상단 <b>[키]</b> 버튼 → "내 프록시 URL" 칸에 그 주소를 붙여넣고 <b>[프록시 저장]</b></li>
+      </ol>
+      <p style="margin-top:6px">이후로는 이 프록시가 항상 최우선으로 쓰이고, 무료 공개 프록시가 죽어도 영향받지 않습니다.</p>
+      <p style="margin-top:6px"><b>추가로 Cron Trigger + KV를 연결하면</b>(Worker Settings → Trigger events → Cron Trigger 추가, Bindings에서 KV 이름을 <code>JW_KV</code>로, 인증키를 Secret <code>SEOUL_KEY</code>로 등록) 브라우저를 꺼둬도 서버가 알아서 10분마다 데이터를 모아둡니다. "최근 추이" 카드가 이 저장분을 자동으로 가져와 합칩니다.</p>
     </section>
 
   </div><!-- /pageManual -->
 
   <footer>
-    <b>완전 독립 실행형</b> — 이 파일 하나로 동작합니다. 데이터는 서울시 열린데이터광장 <code>citydata</code> API를 브라우저에서 직접 호출(중계 서버·MCP 없음), 인증키·관측 이력은 이 브라우저에만 저장됩니다.<br>
-    출처 — 서울 열린데이터광장 실시간 도시데이터 「성수카페거리」 · 매장 정보 LCDC SEOUL 공식 · 행사 정보 서울문화포털<br>
+    <b>내 Cloudflare Worker 경유형</b> — 인증키는 Worker에만 안전하게 보관되고, 이 파일은 그 Worker를 거쳐 서울시 열린데이터광장 <code>citydata</code> API를 호출합니다. 상권 선택과 추이 기록은 이 브라우저(localStorage)와 Worker(KV)에 이중 저장됩니다.<br>
+    출처 — 서울 열린데이터광장 실시간 도시데이터 <code>citydata</code>(선택한 상권 기준)<br>
     한계 — 유동·소비는 거리 전체 기준(매장 방문객 아님) · 소비는 10분 표본 · 월요일 기준선은 2026-08-31 수집. 참고: 사내망·보안 프로그램이 http 요청을 막으면 갱신이 실패할 수 있습니다.
   </footer>
 </div>
@@ -483,10 +581,27 @@ footer a{color:var(--water)}
 (function(){
 "use strict";
 /* ================= CONFIG ================= */
-var POI="성수카페거리";
-var COMPARE=["서울숲공원","연남동","압구정로데오거리","홍대 관광특구"]; /* 비교 핫플 — 서울시 공식 장소명 그대로 */
+var AREA_LIST=[["강남 MICE 관광특구", "관광특구"], ["동대문 관광특구", "관광특구"], ["명동 관광특구", "관광특구"], ["이태원 관광특구", "관광특구"], ["잠실 관광특구", "관광특구"], ["종로·청계 관광특구", "관광특구"], ["홍대 관광특구", "관광특구"], ["경복궁", "고궁·문화유산"], ["광화문·덕수궁", "고궁·문화유산"], ["보신각", "고궁·문화유산"], ["서울 암사동 유적", "고궁·문화유산"], ["창덕궁·종묘", "고궁·문화유산"], ["가산디지털단지역", "인구밀집지역"], ["강남역", "인구밀집지역"], ["건대입구역", "인구밀집지역"], ["고덕역", "인구밀집지역"], ["고속터미널역", "인구밀집지역"], ["교대역", "인구밀집지역"], ["구로디지털단지역", "인구밀집지역"], ["구로역", "인구밀집지역"], ["군자역", "인구밀집지역"], ["대림역", "인구밀집지역"], ["동대문역", "인구밀집지역"], ["뚝섬역", "인구밀집지역"], ["미아사거리역", "인구밀집지역"], ["발산역", "인구밀집지역"], ["사당역", "인구밀집지역"], ["삼각지역", "인구밀집지역"], ["서울대입구역", "인구밀집지역"], ["서울식물원·마곡나루역", "인구밀집지역"], ["서울역", "인구밀집지역"], ["선릉역", "인구밀집지역"], ["성신여대입구역", "인구밀집지역"], ["수유역", "인구밀집지역"], ["신논현역·논현역", "인구밀집지역"], ["신도림역", "인구밀집지역"], ["신림역", "인구밀집지역"], ["신촌·이대역", "인구밀집지역"], ["양재역", "인구밀집지역"], ["역삼역", "인구밀집지역"], ["연신내역", "인구밀집지역"], ["오목교역·목동운동장", "인구밀집지역"], ["왕십리역", "인구밀집지역"], ["용산역", "인구밀집지역"], ["이태원역", "인구밀집지역"], ["장지역", "인구밀집지역"], ["장한평역", "인구밀집지역"], ["천호역", "인구밀집지역"], ["총신대입구(이수)역", "인구밀집지역"], ["충정로역", "인구밀집지역"], ["합정역", "인구밀집지역"], ["혜화역", "인구밀집지역"], ["홍대입구역(2호선)", "인구밀집지역"], ["회기역", "인구밀집지역"], ["가락시장", "발달상권"], ["가로수길", "발달상권"], ["광장(전통)시장", "발달상권"], ["김포공항", "발달상권"], ["노량진", "발달상권"], ["덕수궁길·정동길", "발달상권"], ["북촌한옥마을", "발달상권"], ["서촌", "발달상권"], ["성수카페거리", "발달상권"], ["쌍문역", "인구밀집지역"], ["압구정로데오거리", "발달상권"], ["여의도", "발달상권"], ["연남동", "발달상권"], ["영등포 타임스퀘어", "발달상권"], ["용리단길", "발달상권"], ["이태원 앤틱가구거리", "발달상권"], ["인사동", "발달상권"], ["창동 신경제 중심지", "발달상권"], ["청담동 명품거리", "발달상권"], ["청량리 제기동 일대 전통시장", "발달상권"], ["해방촌·경리단길", "발달상권"], ["DDP(동대문디자인플라자)", "발달상권"], ["DMC(디지털미디어시티)", "발달상권"], ["강서한강공원", "공원"], ["고척돔", "공원"], ["광나루한강공원", "공원"], ["광화문광장", "공원"], ["국립중앙박물관·용산가족공원", "공원"], ["난지한강공원", "공원"], ["남산공원", "공원"], ["노들섬", "공원"], ["뚝섬한강공원", "공원"], ["망원한강공원", "공원"], ["반포한강공원", "공원"], ["북서울꿈의숲", "공원"], ["서리풀공원·몽마르뜨공원", "공원"], ["서울대공원", "공원"], ["서울숲공원", "공원"], ["아차산", "공원"], ["양화한강공원", "공원"], ["어린이대공원", "공원"], ["여의도한강공원", "공원"], ["월드컵공원", "공원"], ["응봉산", "공원"], ["이촌한강공원", "공원"], ["잠실종합운동장", "공원"], ["잠실한강공원", "공원"], ["잠원한강공원", "공원"], ["청계산", "공원"], ["북창동 먹자골목", "발달상권"], ["남대문시장", "발달상권"], ["익선동", "발달상권"], ["신정네거리역", "인구밀집지역"], ["잠실새내역", "인구밀집지역"], ["잠실역", "인구밀집지역"], ["잠실롯데타워·석촌호수", "발달상권"], ["송리단길·호수단길", "발달상권"], ["신촌 스타광장", "발달상권"], ["보라매공원", "공원"], ["서대문독립공원", "공원"], ["안양천", "공원"], ["여의서로", "공원"], ["올림픽공원", "공원"], ["홍제폭포", "공원"], ["송현녹지광장", "공원"], ["시의회 앞", "인구밀집지역"], ["숭례문", "인구밀집지역"]]; /* [이름, 카테고리] 서울시 실시간 도시데이터 공식 121장소 */
+var DEFAULT_AREA="성수카페거리";
+var CURVE_AREAS={"성수카페거리":true}; /* 요일별 기준선 데이터가 준비된 상권 */
+var POI=lsGet("jw_area",DEFAULT_AREA);
 var INTERVAL_MIN=10;
+var HIST_MAX_DAYS=7; /* 추이 기록 보관 기간 — localStorage(이 브라우저)에 쌓입니다 */
+var HIST_MAX=Math.round(HIST_MAX_DAYS*24*60/INTERVAL_MIN);
 var BRUNCH=[10,15];
+
+function areaCat(nm){for(var i=0;i<AREA_LIST.length;i++)if(AREA_LIST[i][0]===nm)return AREA_LIST[i][1];return null;}
+function pickCompare(poi){
+  var cat=areaCat(poi);
+  var peers=AREA_LIST.filter(function(a){return a[0]!==poi&&a[1]===cat;}).map(function(a){return a[0];});
+  var out=peers.slice(0,4);
+  if(out.length<4){
+    var fill=AREA_LIST.filter(function(a){return a[0]!==poi&&out.indexOf(a[0])<0;}).map(function(a){return a[0];});
+    out=out.concat(fill.slice(0,4-out.length));
+  }
+  return out;
+}
+var COMPARE=pickCompare(POI);
 
 var NS="http://www.w3.org/2000/svg";
 function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)if(a[k]!=null)e.setAttribute(k,a[k]);return e;}
@@ -672,41 +787,98 @@ function drawTreemap(data){
 }
 drawTreemap(IND_BASE);
 
-/* ================= API ================= */
-var KEY=lsGet("jw_apikey","");
-var timer=null;
-/* 서울 열린데이터광장 API는 http(평문)만 제공하며, GitHub Pages는 https로만 서비스되어
-   브라우저가 이를 "Mixed Content"로 차단합니다. 아래 무료 CORS 프록시를 통해 https로 우회 호출합니다.
-   (API 키는 사용자의 브라우저 localStorage에만 저장되며, 저장소 코드에는 포함되지 않습니다.) */
-var CORS_PROXIES=[
-  function(t){return "https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(t);},
-  function(t){return "https://api.allorigins.win/raw?url="+encodeURIComponent(t);},
-  function(t){return "https://thingproxy.freeboard.io/fetch/"+t;}
-];
-function fetchViaProxy(target,i){
-  i=i||0;
-  if(i>=CORS_PROXIES.length)return Promise.reject(new Error("프록시 연결 실패 — 잠시 후 다시 시도해 주세요."));
-  var u=CORS_PROXIES[i](target);
-  return fetch(u).then(function(r){
-    if(!r.ok)throw new Error("proxy http "+r.status);
-    return r.json();
-  }).catch(function(){
-    return fetchViaProxy(target,i+1);
-  });
+/* ================= 최근 추이(실측) ================= */
+function drawTrend(hist){
+  var svg=$("trendCurve");
+  svg.innerHTML="";
+  if(!hist||hist.length<2){
+    svg.setAttribute("viewBox","0 0 1000 60");
+    var t=el("text",{x:500,y:34,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--sans)","font-size":13});
+    t.textContent="아직 기록이 2회 미만입니다 — 10분 뒤 다시 갱신하면 추이가 시작됩니다.";
+    svg.appendChild(t);
+    $("trendSub").textContent="관측 대기";
+    return;
+  }
+  var TW=1000,TH=260,mL=52,mR=44,mT=20,mB=34,iw=TW-mL-mR,ih=TH-mT-mB;
+  svg.setAttribute("viewBox","0 0 "+TW+" "+TH);
+  var t0=hist[0].t,t1=hist[hist.length-1].t;
+  var pMaxV=Math.max.apply(null,hist.map(function(h){return h.pm||0;}))*1.1||1;
+  var hasCons=hist.some(function(h){return h.am!=null;});
+  var aMaxV=hasCons?Math.max.apply(null,hist.filter(function(h){return h.am!=null;}).map(function(h){return h.am;}))*1.1:1;
+  function tx(t){return mL+(t1===t0?0:(t-t0)/(t1-t0))*iw;}
+  function tyP(v){return mT+(1-v/pMaxV)*ih;}
+  function tyA(v){return mT+(1-v/aMaxV)*ih;}
+  /* 격자 & x축 시각 라벨 (최대 6개, 24시간 넘으면 날짜도 표기) */
+  var spanMs=t1-t0;
+  var overDay=spanMs>24*3600000;
+  var nLab=Math.min(6,hist.length);
+  for(var i=0;i<nLab;i++){
+    var idx=Math.round(i*(hist.length-1)/(nLab-1||1));
+    var d=new Date(hist[idx].t);
+    var xl=el("text",{x:tx(hist[idx].t),y:TH-10,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":11});
+    xl.textContent=(overDay?pad2(d.getMonth()+1)+"/"+pad2(d.getDate())+" ":"")+pad2(d.getHours())+":"+pad2(d.getMinutes());
+    svg.appendChild(xl);
+  }
+  svg.appendChild(el("line",{x1:mL,y1:mT+ih,x2:mL+iw,y2:mT+ih,stroke:"var(--line)","stroke-width":1}));
+  /* 인구 라인 */
+  var dP="";
+  hist.forEach(function(h,i){if(h.pm==null)return;dP+=(dP?"L":"M")+tx(h.t)+" "+tyP(h.pm);});
+  svg.appendChild(el("path",{d:dP,fill:"none",stroke:"var(--jade)","stroke-width":2.5,"stroke-linejoin":"round"}));
+  var lastP=hist[hist.length-1];
+  if(lastP.pm!=null)svg.appendChild(el("circle",{cx:tx(lastP.t),cy:tyP(lastP.pm),r:4,fill:"var(--jade)"}));
+  var pLab=el("text",{x:mL,y:mT-6,fill:"var(--jade-deep)","font-family":"var(--mono)","font-size":11,"font-weight":600});
+  pLab.textContent="● 거리 유동인구 (좌축)";svg.appendChild(pLab);
+  /* 소비 라인 */
+  if(hasCons){
+    var dA="";
+    hist.forEach(function(h){if(h.am==null)return;dA+=(dA?"L":"M")+tx(h.t)+" "+tyA(h.am);});
+    svg.appendChild(el("path",{d:dA,fill:"none",stroke:"var(--water)","stroke-width":2,"stroke-dasharray":"5 4","stroke-linejoin":"round"}));
+    var lastA=null;for(var j=hist.length-1;j>=0;j--){if(hist[j].am!=null){lastA=hist[j];break;}}
+    if(lastA)svg.appendChild(el("circle",{cx:tx(lastA.t),cy:tyA(lastA.am),r:4,fill:"var(--water)"}));
+    var aLab=el("text",{x:mL+180,y:mT-6,fill:"var(--water)","font-family":"var(--mono)","font-size":11,"font-weight":600});
+    aLab.textContent="- - 카드소비 (우축, 별도 스케일)";svg.appendChild(aLab);
+  }
+  var totalHrs=(t1-t0)/3600000;
+  var span=totalHrs>=24?(totalHrs/24).toFixed(1)+"일":totalHrs.toFixed(1)+"시간";
+  $("trendSub").textContent="최근 "+span+" · 관측 "+hist.length+"회 (최대 "+HIST_MAX_DAYS+"일 보관)";
 }
+
+/* ================= API — 내 Cloudflare Worker가 인증키를 들고 대신 호출 ================= */
+var WORKER_URL="https://dry-base-1fd3.dohyeong0420.workers.dev";
+var timer=null;
 function api(service,arg){
-  var target="http://openapi.seoul.go.kr:8088/"+encodeURIComponent(KEY)+"/json/"+service+"/1/5/"+encodeURIComponent(arg);
-  return fetchViaProxy(target);
+  return fetch(WORKER_URL+"/api?service="+service+"&area="+encodeURIComponent(arg))
+    .then(function(r){return r.json();});
+}
+
+/* ================= 내 프록시(Worker) 서버 연동 — 브라우저를 안 열어도 쌓이는 추이 기록 ================= */
+function notifyAreaToServer(area){
+  fetch(WORKER_URL+"/set-area",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({area:area})
+  }).catch(function(){}); /* 실패해도 조용히 무시 — 로컬 수집은 그대로 계속됨 */
+}
+function fetchServerHist(area){
+  return fetch(WORKER_URL+"/history?area="+encodeURIComponent(area))
+    .then(function(r){return r.ok?r.json():null;})
+    .catch(function(){return null;});
+}
+function mergeHist(local,server){
+  var map={};
+  (local||[]).concat(server||[]).forEach(function(h){if(h&&h.t)map[h.t]=h;});
+  var merged=Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return a.t-b.t;});
+  if(merged.length>HIST_MAX)merged=merged.slice(-HIST_MAX);
+  return merged;
 }
 function setBadge(cls,txt){var b=$("liveBadge");b.className="livebadge"+(cls?" "+cls:"");b.innerHTML="<i></i>"+txt;}
 
 function refresh(){
-  if(!KEY){$("setup").hidden=false;setBadge("","키 없음");return;}
   setBadge("","갱신 중…");
   api("citydata",POI).then(function(j){
     var cd=j&&j.CITYDATA;
     if(!cd){
-      var msg=(j&&j.RESULT&&(j.RESULT["RESULT.MESSAGE"]||j.RESULT.MESSAGE))||(j&&j.MESSAGE)||"응답 형식 오류";
+      var msg=(j&&j.RESULT&&(j.RESULT["RESULT.MESSAGE"]||j.RESULT.MESSAGE))||(j&&j.error)||"응답 형식 오류";
       throw new Error(msg);
     }
     renderCity(cd);
@@ -714,13 +886,10 @@ function refresh(){
     var now=new Date();
     $("datex").textContent=now.getFullYear()+"."+pad2(now.getMonth()+1)+"."+pad2(now.getDate())+" "+pad2(now.getHours())+":"+pad2(now.getMinutes())+" 갱신";
     markWeek(now);
-    $("keyErr").hidden=true;$("setup").hidden=true;
     fetchCompare();
   }).catch(function(e){
     setBadge("err","갱신 실패");
-    $("setup").hidden=false;
-    $("keyErr").hidden=false;
-    $("keyErr").textContent="호출 실패: "+e.message+" — 키가 맞는지, 네트워크가 http를 허용하는지 확인하세요.";
+    $("datex").textContent="호출 실패: "+e.message;
   });
 }
 /* 핫플 비교 (본체 렌더 후 실행) */
@@ -802,11 +971,13 @@ function renderCity(cd){
     });
     /* 트리맵도 라이브 가맹점 수로 */
     if(rsb.length>=4) drawTreemap(rsb.map(function(r){return [r.RSB_MID_CTGR.replace("/","·"),+r.RSB_MCT_CNT];}));
-    /* --- 자가 급증 --- */
+  }
+  /* --- 자가 급증 & 추이 기록 (인구는 항상, 소비는 있으면) --- */
+  {
     var hist=lsGet("jw_hist",[]);
     var nowT=Date.now();
     var pm2=lastPop?(lastPop.mn+lastPop.mx)/2:null;
-    var am2=((+c.AREA_SH_PAYMENT_AMT_MIN)+(+c.AREA_SH_PAYMENT_AMT_MAX))/2;
+    var am2=c?((+c.AREA_SH_PAYMENT_AMT_MIN)+(+c.AREA_SH_PAYMENT_AMT_MAX))/2:null;
     var prev=null;
     for(var q=hist.length-1;q>=0;q--){if(nowT-hist[q].t>=45*60000){prev=hist[q];break;}}
     if(!prev&&hist.length)prev=hist[0];
@@ -814,8 +985,10 @@ function renderCity(cd){
     var surging=false;
     if(prev&&pm2){
       var dp=(pm2-prev.pm)/prev.pm*100;
-      var dc=prev.am?((am2-prev.am)/prev.am*100):null;
+      var dc=(prev.am!=null&&am2!=null)?((am2-prev.am)/prev.am*100):null;
       var ageMin=Math.round((nowT-prev.t)/60000);
+      $("lvDelta").textContent=(dp>=0?"+":"")+dp.toFixed(1)+"% / "+ageMin+"분";
+      $("lvDelta").className="rv"+(dp>=20?" up":dp<=-20?" down":"");
       sh.innerHTML="";
       function row(nm2,val,th){
         var li=document.createElement("li");
@@ -826,10 +999,21 @@ function renderCity(cd){
       row("거리 유동인구",dp,20);
       if(dc!=null)row("카드 소비",dc,30);
     }
-    hist.push({t:nowT,pm:pm2,am:am2});
-    if(hist.length>48)hist=hist.slice(-48);
-    lsSet("jw_hist",hist);
-    updateVerdict(surging);
+    if(pm2!=null){
+      hist.push({t:nowT,pm:pm2,am:am2});
+      if(hist.length>HIST_MAX)hist=hist.slice(-HIST_MAX); /* 최대 HIST_MAX_DAYS일 보관, 이후 오래된 기록부터 삭제 */
+      lsSet("jw_hist",hist);
+    }
+    if(c)updateVerdict(surging);
+    drawTrend(hist);
+    /* 내 프록시(Worker)가 백그라운드로 모아둔 서버 기록과 병합 — 브라우저를 안 열어둔 구간도 채워짐 */
+    var poiAtCall=POI;
+    fetchServerHist(poiAtCall).then(function(serverHist){
+      if(!serverHist||!serverHist.length||poiAtCall!==POI)return;
+      var merged=mergeHist(lsGet("jw_hist",[]),serverHist);
+      lsSet("jw_hist",merged);
+      drawTrend(merged);
+    });
   }
   /* --- 날씨 --- */
   var w=cd.WEATHER_STTS;if(Array.isArray(w))w=w[0];
@@ -863,6 +1047,102 @@ function renderCity(cd){
       $("wxCap").textContent="브런치 창("+BRUNCH[0]+"–"+BRUNCH[1]+"시) 강수확률 50% 미만 — 날씨 리스크 낮음.";
       $("advRain").hidden=true;
     }
+  }
+  updateAdvice(p,c);
+  updateDigest(p,c,w,typeof rsb!=="undefined"?rsb:null);
+  updateTransport(cd.SUB_STTS,cd.BUS_STN_STTS,cd.LIVE_SUB_PPLTN,cd.LIVE_BUS_PPLTN,cd.ROAD_TRAFFIC_STTS);
+  updateParking(cd.PRK_STTS);
+  updateEvents(cd.EVENT_STTS);
+}
+function updateTransport(subs,busStops,subPop,busPop,road){
+  var sh=$("subList");sh.innerHTML="";
+  if(subs&&subs.length){
+    subs.slice(0,4).forEach(function(s){
+      var next=(s.SUB_DETAIL||[])[0];
+      var li=document.createElement("li");
+      li.innerHTML='<span class="nm">'+s.SUB_STN_NM+' ('+s.SUB_STN_LINE+'호선)</span><span class="vv">'+(next?next.SUB_ARMG1:"정보 없음")+'</span>';
+      sh.appendChild(li);
+    });
+    var sup=subPop?(" · 최근 10분 승차 "+subPop.SUB_10WTHN_GTON_PPLTN_MIN+"–"+subPop.SUB_10WTHN_GTON_PPLTN_MAX+"명"):"";
+    $("transCap").textContent="가까운 지하철역 "+subs.length+"곳"+sup+".";
+  }else{
+    sh.innerHTML='<li><span class="nm">이 상권 반경엔 지하철역이 없습니다</span></li>';
+    $("transCap").textContent="지하철역 없음 — 버스·도보 접근 위주 상권입니다.";
+  }
+  $("busCnt").textContent=busStops?busStops.length+"곳":"–";
+  var avg=road&&road.AVG_ROAD_DATA;
+  $("roadIdx").textContent=avg?avg.ROAD_TRAFFIC_IDX:"–";
+  $("roadSpd").textContent=avg?avg.ROAD_TRAFFIC_SPD+"km/h":"–";
+}
+function updateParking(prk){
+  var el2=$("prkList");el2.innerHTML="";
+  if(!prk||!prk.length){
+    el2.innerHTML='<li><span class="nm">인근에 등록된 공영·민영 주차장이 없습니다</span></li>';
+    $("prkCap").textContent="";
+    return;
+  }
+  var top=prk.slice().sort(function(a,b){return (+b.CPCTY||0)-(+a.CPCTY||0);}).slice(0,5);
+  top.forEach(function(p2){
+    var li=document.createElement("li");
+    var fee=p2.PAY_YN==="Y"?(p2.RATES+"원/"+p2.TIME_RATES+"분"):"무료";
+    li.innerHTML='<span class="nm">'+p2.PRK_NM+'</span><span class="vv">'+p2.CPCTY+'대 · '+fee+'</span>';
+    el2.appendChild(li);
+  });
+  var totalCap=prk.reduce(function(s,p2){return s+(+p2.CPCTY||0);},0);
+  $("prkCap").textContent="총 "+prk.length+"곳, "+totalCap+"대 수용 규모(실시간 잔여석은 이 데이터에 없어 표시하지 않습니다).";
+}
+function updateEvents(events){
+  var host=$("eventList");host.innerHTML="";
+  if(!events||!events.length){
+    host.innerHTML='<p class="eventempty">이 상권 반경에서 오늘 진행 중인 서울시 등록 문화행사가 없습니다.</p>';
+    return;
+  }
+  events.slice(0,4).forEach(function(ev){
+    var div=document.createElement("div");div.className="eventcard";
+    div.innerHTML='<h3>'+ev.EVENT_NM+'</h3><p>'+(ev.EVENT_PLACE||"")+' · '+(ev.EVENT_PERIOD||"")+' · '+(ev.PAY_YN==="Y"?"유료":"무료")+'</p>'+(ev.URL?'<a href="'+ev.URL+'" target="_blank" rel="noopener">자세히 보기 →</a>':"");
+    host.appendChild(div);
+  });
+}
+function updateDigest(p,c,w,rsb){
+  if(!p&&!c)return;
+  var parts=[];
+  parts.push("<b>"+POI+"</b>는 지금 ");
+  if(p){
+    parts.push("거리 유동인구 <b>"+(+p.AREA_PPLTN_MIN/10000).toFixed(1)+"–"+(+p.AREA_PPLTN_MAX/10000).toFixed(1)+"만명</b>, 혼잡도 <b>"+p.AREA_CONGEST_LVL+"</b>이고, ");
+    var nonres=Math.round(+p.NON_RESNT_PPLTN_RATE||0);
+    parts.push("이 중 <b>"+nonres+"%</b>가 동네 밖에서 온 방문객입니다. ");
+  }
+  if(c){
+    parts.push("최근 10분 카드소비는 <b>"+Math.round(+c.AREA_SH_PAYMENT_AMT_MIN/10000)+"–"+Math.round(+c.AREA_SH_PAYMENT_AMT_MAX/10000)+"만원</b>("+(c.AREA_CMRCL_LVL||"–")+" 수준)이며, ");
+  }
+  if(rsb&&rsb.length){
+    parts.push("가맹점 결제 기준 가장 두꺼운 업종은 <b>"+rsb[0].RSB_MID_CTGR+"</b>입니다. ");
+  }
+  if(w){
+    var pr=w.PRECIPITATION&&w.PRECIPITATION!=="-"?w.PRECIPITATION:null;
+    parts.push(pr?("현재 비("+pr+")가 오고 있어 유동에 영향을 줄 수 있습니다.") : "현재 강수는 없습니다.");
+  }
+  $("digestText").innerHTML=parts.join("");
+}
+function updateAdvice(p,c){
+  if(p){
+    var lvl=p.AREA_CONGEST_LVL||"–";
+    var lvlMsg={
+      "여유":"손이 비는 시간대입니다. 신메뉴 테스트, 재고 정리, 청소 같은 작업을 지금 처리하기 좋습니다.",
+      "보통":"평소 패턴 범위입니다. 준비량은 유지하고 좌석 회전을 지켜보세요.",
+      "약간 붐빔":"평소보다 사람이 붙는 중입니다. 재료·인력 여유분을 한 번 점검하세요.",
+      "붐빔":"유동이 많은 시간대입니다. 회전과 대기 안내를 신경 써야 할 때입니다.",
+      "매우 붐빔":"정점 시간대입니다. 재료 소진과 대기열 관리를 최우선으로 두세요."
+    };
+    $("advCongestH").textContent=POI+" 지금 혼잡도: "+lvl;
+    $("advCongestP").textContent=lvlMsg[lvl]||"실시간 혼잡도를 확인해 준비량을 조정하세요.";
+    $("advCongestW").textContent="근거 — 서울 열린데이터광장 실시간 혼잡도";
+    var nonres=+p.NON_RESNT_PPLTN_RATE||0;
+    $("advVisitH").textContent=Math.round(nonres)+"%가 외지 방문객입니다";
+    $("advVisitP").textContent = nonres>=50
+      ? "거리 인구의 절반 이상이 이 동네에 살지 않는 방문객입니다. 처음 오는 손님 기준으로 안내문·간판을 점검해 보세요."
+      : "동네 상주 인구 비중이 더 큽니다. 단골 관리와 재방문 유도가 더 효과적일 수 있습니다.";
+    $("advVisitW").textContent="근거 — 비상주 인구 비율 실시간";
   }
 }
 /* ---- 오늘 다녀간 사람: 인구 가중 누적 ---- */
@@ -912,7 +1192,7 @@ function updateVerdict(surging){
   var v=$("verdict"),pill=$("vpill"),tx=$("vtext");
   if(surging){
     v.classList.add("surging");pill.textContent="증량 검토";
-    tx.innerHTML="<b>성수카페거리 지표가 직전 대비 급증 중입니다.</b> 평소보다 빠르게 사람이 몰리는 중 — 재료·인력 여유분을 점검하세요.";
+    tx.innerHTML="<b>"+POI+" 지표가 직전 대비 급증 중입니다.</b> 평소보다 빠르게 사람이 몰리는 중 — 재료·인력 여유분을 점검하세요.";
   }else{
     v.classList.remove("surging");pill.textContent="준비량 유지";
     tx.innerHTML="지표가 평일 패턴 범위 안입니다. 손님 수보다 <b>좌석 회전과 체류 시간 관리</b>가 오늘 매출을 정합니다.";
@@ -937,24 +1217,68 @@ function drawWeek(){
 }
 drawWeek();
 
-/* 키 관리 + 자동 갱신 */
+/* 자동 갱신 */
 function startTimer(){
   if(timer)clearInterval(timer);
   timer=setInterval(refresh,INTERVAL_MIN*60000);
   $("autoTxt").textContent=INTERVAL_MIN+"분마다 자동 갱신";
 }
 $("refreshBtn").onclick=refresh;
-$("keyBtn").onclick=function(){$("setup").hidden=!$("setup").hidden;if(!$("setup").hidden)$("keyInput").focus();};
-$("keySave").onclick=function(){
-  var k=$("keyInput").value.trim();
-  if(!k){$("keyErr").hidden=false;$("keyErr").textContent="키를 입력하세요.";return;}
-  KEY=k;lsSet("jw_apikey",k);refresh();
+
+/* ================= 상권·매장 설정 ================= */
+function fillAreaSelect(){
+  var sel=$("areaSel");sel.innerHTML="";
+  var cats={};
+  AREA_LIST.forEach(function(a){(cats[a[1]]=cats[a[1]]||[]).push(a[0]);});
+  Object.keys(cats).forEach(function(c){
+    var og=document.createElement("optgroup");og.label=c;
+    cats[c].forEach(function(nm){
+      var op=document.createElement("option");op.value=nm;op.textContent=nm;
+      if(nm===POI)op.selected=true;
+      og.appendChild(op);
+    });
+    sel.appendChild(og);
+  });
+}
+function applyCurveVisibility(){
+  var has=!!CURVE_AREAS[POI];
+  $("curveCard").hidden=!has;
+  $("curveFallback").hidden=has;
+}
+function renderStoreBrand(){
+  $("storeName").textContent=POI;
+  $("storeSub").textContent="서울 열린데이터광장 실시간 상권 리포트";
+  $("trendCap").innerHTML="내 프록시(Cloudflare Worker)가 브라우저를 안 열어도 10분마다 백그라운드로 수집합니다. 최대 7일치까지 서버(KV)와 이 브라우저에 이중 저장되며, 이후 오래된 기록부터 자동 삭제됩니다. 요일별 과거 기준선이 아니라 <b>실시간 관측 누적치</b>입니다.";
+}
+fillAreaSelect();
+applyCurveVisibility();
+renderStoreBrand();
+$("storeBtn").onclick=function(){
+  $("storeSetup").hidden=!$("storeSetup").hidden;
 };
-$("keyInput").addEventListener("keydown",function(e){if(e.key==="Enter")$("keySave").click();});
+$("storeSave").onclick=function(){
+  var newArea=$("areaSel").value;
+  if(newArea&&newArea!==POI){
+    POI=newArea;lsSet("jw_area",POI);COMPARE=pickCompare(POI);
+    lsSet("jw_hist",[]); /* 상권이 바뀌면 자가 급증 비교 이력 초기화 — 새 상권은 서버쪽 기록으로 다시 채워짐 */
+    lsSet("jw_today",null); /* 상권이 바뀌면 오늘 누적(연령대 등)도 초기화 — 안 그러면 두 상권 데이터가 섞임 */
+    var tstrip=$("todayAge");if(tstrip)tstrip.innerHTML="";
+    var tleg=$("todayAgeLeg");if(tleg)tleg.innerHTML="";
+    var tmeta=$("todayMeta");if(tmeta)tmeta.textContent="누적 관측 대기";
+    applyCurveVisibility();
+    drawTrend([]);
+    notifyAreaToServer(POI); /* 내 프록시가 이 상권을 백그라운드로 추적하도록 등록 */
+  }
+  renderStoreBrand();
+  $("storeSetup").hidden=true;
+  refresh();
+};
 
 /* 복사 */
+(function(){var saved=lsGet("jw_notice","");if(saved)$("copysrc").value=saved;})();
+$("copySave").addEventListener("click",function(){lsSet("jw_notice",$("copysrc").value);});
 $("copybtn").addEventListener("click",function(){
-  var txt=$("copysrc").innerText;
+  var txt=$("copysrc").value;
   function done(){$("copymsg").style.opacity=1;setTimeout(function(){$("copymsg").style.opacity=0;},2200);}
   function fb(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,fb);}else fb();
@@ -974,10 +1298,17 @@ navBtns.forEach(function(b){
 
 /* 오늘 누적 저장분 초기 표시 */
 (function(){var td=lsGet("jw_today",null);if(td&&td.w)renderToday(td);})();
+drawTrend(lsGet("jw_hist",[]));
+notifyAreaToServer(POI); /* 매번 켤 때마다 등록해두면 Worker가 계속 이 상권을 추적 */
+fetchServerHist(POI).then(function(serverHist){
+  if(!serverHist||!serverHist.length)return;
+  var merged=mergeHist(lsGet("jw_hist",[]),serverHist);
+  lsSet("jw_hist",merged);
+  drawTrend(merged);
+});
 
 /* 부팅 */
-if(KEY){refresh();startTimer();}
-else{$("setup").hidden=false;setBadge("","키 없음");}
+refresh();startTimer();
 })();
 </script>
 </body>
