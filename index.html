@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>제이드앤워터 모닝보드</title>
+<title>상권레이더</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -782,16 +782,21 @@ function drawTrend(hist){
   function tx(t){return mL+(t1===t0?0:(t-t0)/(t1-t0))*iw;}
   function tyP(v){return mT+(1-v/pMaxV)*ih;}
   function tyA(v){return mT+(1-v/aMaxV)*ih;}
-  /* 격자 & x축 시각 라벨 (최대 6개, 24시간 넘으면 날짜도 표기) */
+  /* 격자 & x축 시각 라벨 — 실제 시계 기준(30분/1시간/... 단위)으로 정렬, 24시간 넘으면 날짜도 표기 */
   var spanMs=t1-t0;
   var overDay=spanMs>24*3600000;
-  var nLab=Math.min(6,hist.length);
-  for(var i=0;i<nLab;i++){
-    var idx=Math.round(i*(hist.length-1)/(nLab-1||1));
-    var d=new Date(hist[idx].t);
-    var xl=el("text",{x:tx(hist[idx].t),y:TH-10,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":11});
+  var stepMin=30;
+  if(spanMs>36*3600000)stepMin=360;
+  else if(spanMs>12*3600000)stepMin=120;
+  else if(spanMs>4*3600000)stepMin=60;
+  var stepMs=stepMin*60000;
+  var firstTick=Math.ceil(t0/stepMs)*stepMs;
+  for(var tk=firstTick;tk<=t1;tk+=stepMs){
+    var d=new Date(tk);
+    var xl=el("text",{x:tx(tk),y:TH-10,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":11});
     xl.textContent=(overDay?pad2(d.getMonth()+1)+"/"+pad2(d.getDate())+" ":"")+pad2(d.getHours())+":"+pad2(d.getMinutes());
     svg.appendChild(xl);
+    svg.appendChild(el("line",{x1:tx(tk),y1:mT,x2:tx(tk),y2:mT+ih,stroke:"var(--line)","stroke-width":1,opacity:.4}));
   }
   svg.appendChild(el("line",{x1:mL,y1:mT+ih,x2:mL+iw,y2:mT+ih,stroke:"var(--line)","stroke-width":1}));
   /* 인구 라인 */
