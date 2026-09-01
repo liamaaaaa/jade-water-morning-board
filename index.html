@@ -84,6 +84,10 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .keyrow input{flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
 .keyrow input:focus-visible{outline:2px solid var(--jade)}
 .setup .err{color:var(--rain);font-weight:600}
+.arow{padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line)}
+.arow:hover{background:var(--jade-wash)}
+.arow.sel{background:var(--jade-wash);color:var(--jade-deep);font-weight:600}
+.arowcat{padding:5px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--inset);position:sticky;top:0}
 
 /* verdict */
 .verdict{display:flex;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--warn);padding:16px 20px}
@@ -149,6 +153,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .eventcard p{margin:0;font-size:12.5px;color:var(--ink-2)}
 .eventcard a{color:var(--jade);font-size:12.5px;font-weight:600}
 .eventempty{font-size:13.5px;color:var(--ink-3)}
+.eventcard .why{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
 
 /* weather strip */
 .wxs{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
@@ -267,12 +272,12 @@ footer a{color:var(--water)}
 
   <div class="setup" id="storeSetup" hidden>
     <h2>상권 설정</h2>
-    <p>서울시가 실시간 데이터를 제공하는 <b>121개 주요 상권</b> 중 분석할 곳을 고르세요. 인증키·중계 서버는 이미 연결돼 있어 이것만 고르면 바로 보입니다.</p>
+    <p>서울시가 실시간 데이터를 제공하는 <b>121개 주요 상권</b> 중 분석할 곳을 고르세요. 검색하거나 스크롤해서 고를 수 있어요.</p>
     <div class="keyrow">
-      <input id="areaSearch" list="areaOptions" autocomplete="off" placeholder="상권 검색 (예: 성수, 강남역...)" style="flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)">
-      <datalist id="areaOptions"></datalist>
+      <input id="areaSearch" autocomplete="off" placeholder="상권 검색 (예: 성수, 강남역...)" style="flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)">
       <button class="btn" id="storeSave">저장하고 불러오기</button>
     </div>
+    <div id="areaListBox" style="max-height:240px;overflow-y:auto;border:1px solid var(--line-2);background:var(--surface)"></div>
     <p class="err" id="areaErr" hidden></p>
   </div>
 
@@ -382,6 +387,15 @@ footer a{color:var(--water)}
     <div id="eventList"></div>
   </section>
 
+  <section class="card" id="newsCard">
+    <div class="ct">
+      <h2>상권 이슈 뉴스</h2>
+      <span class="sub" id="newsSub">네이버 뉴스 검색 · 상권명 기준 최신순</span>
+    </div>
+    <div id="newsList"></div>
+    <p class="cap">뉴스는 상권명으로 검색한 결과라 관련 없는 기사가 섞일 수 있어요 — 제목·요약만 참고하고 필요하면 링크로 직접 확인하세요.</p>
+  </section>
+
   <section class="card">
     <div class="ct">
       <h2>오늘 시간대별 날씨</h2>
@@ -414,33 +428,6 @@ footer a{color:var(--water)}
     </div>
     <p class="simnote" id="simText"></p>
     <p class="cap" id="curveCap">+/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 선택한 상권 전체 유동(우리 매장 방문객 아님) — 상대 비교용이며, 121곳 모두 이 브라우저에서 실제로 관측·예측한 값입니다. 갱신 초반엔 데이터가 적어 비어 보일 수 있어요.</p>
-  </section>
-
-  <section>
-    <div class="ct" style="margin-bottom:12px">
-      <h2 style="font-family:var(--disp);font-size:19px;margin:0">오늘의 조언</h2>
-      <span class="sub" style="font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto">데이터에서 자동 도출</span>
-    </div>
-    <div class="advice" id="advice">
-      <div class="adv a-warn" id="advCongest">
-        <span class="tag">혼잡도</span>
-        <h3 id="advCongestH">데이터 대기</h3>
-        <p id="advCongestP">잠시 후 실시간 혼잡도 기반 조언이 표시됩니다.</p>
-        <span class="why" id="advCongestW">–</span>
-      </div>
-      <div class="adv a-jade" id="advVisit">
-        <span class="tag">손님</span>
-        <h3 id="advVisitH">데이터 대기</h3>
-        <p id="advVisitP">잠시 후 방문객 구성 기반 조언이 표시됩니다.</p>
-        <span class="why" id="advVisitW">–</span>
-      </div>
-      <div class="adv a-rain" id="advRain" hidden>
-        <span class="tag">날씨</span>
-        <h3 id="advRainH">–</h3>
-        <p id="advRainP">–</p>
-        <span class="why" id="advRainW">–</span>
-      </div>
-    </div>
   </section>
 
   <div class="grid2">
@@ -491,7 +478,7 @@ footer a{color:var(--water)}
         <li><span class="step">2</span><b>판단 배지</b>부터 봅니다 — "준비량 유지"면 평소대로, <b>"증량 검토"</b>로 바뀌면 재료·인력 여유분 점검.</li>
         <li><span class="step">3</span><b>오늘 시간대별 날씨</b> — 노란 테두리(브런치 창 10–15시)에 파란 칸(강수확률 50%↑)이 있으면 우산·실내 회전 준비.</li>
         <li><span class="step">4</span><b>수요 곡선</b> — 실선이 높을수록 그 시간대 유동이 많다는 뜻입니다. 지금 이전은 실측치, 이후는 예측치입니다.</li>
-        <li><span class="step">5</span>필요할 때 <b>오늘의 조언</b>과 나머지 섹션을 참고합니다.</li>
+        <li><span class="step">5</span>필요할 때 나머지 섹션(교통·주차·문화행사 등)을 참고합니다.</li>
       </ol>
     </section>
 
@@ -1010,20 +997,44 @@ function renderCity(cd){
     });
     if(rainHours.length){
       $("wxCap").innerHTML="<b>브런치 창("+BRUNCH[0]+"–"+BRUNCH[1]+"시)에 강수확률 50% 이상인 시간: "+rainHours.join(", ")+"시.</b> 우산 보관·실내 회전 준비.";
-      $("advRain").hidden=false;
-      $("advRainH").textContent="비 오는 날, 자연광 대신 '오래 머무는 자리'를 판다";
-      $("advRainP").textContent="매장의 강점인 자연광이 죽는 날입니다. 우산 보관·비닐을 입구에, 따뜻한 음료 페어링을 전면에. 체류가 길어지므로 웨이팅 안내를 명확히 해야 회전 손실을 줄입니다.";
-      $("advRainW").textContent="근거 — 브런치 창 강수확률 최대 "+maxRain+"%";
     }else{
       $("wxCap").textContent="브런치 창("+BRUNCH[0]+"–"+BRUNCH[1]+"시) 강수확률 50% 미만 — 날씨 리스크 낮음.";
-      $("advRain").hidden=true;
     }
   }
-  updateAdvice(p,c);
   updateDigest(p,c,w,typeof rsb!=="undefined"?rsb:null,cd.EVENT_STTS);
   updateTransport(cd.SUB_STTS,cd.BUS_STN_STTS,cd.LIVE_SUB_PPLTN,cd.LIVE_BUS_PPLTN,cd.ROAD_TRAFFIC_STTS);
   updateParking(cd.PRK_STTS);
   updateEvents(cd.EVENT_STTS);
+  fetchNews(POI);
+}
+function stripHtml(s){
+  return (s||"").replace(/<[^>]*>/g,"").replace(/&quot;/g,'"').replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#39;/g,"'");
+}
+function fetchNews(area){
+  var host=$("newsList");
+  fetch(WORKER_URL+"/news?area="+encodeURIComponent(area))
+    .then(function(r){return r.json();})
+    .then(function(j){
+      var items=(j&&j.items)||[];
+      host.innerHTML="";
+      if(!items.length){
+        $("newsSub").textContent="관련 뉴스 없음";
+        host.innerHTML='<p class="eventempty">"'+area+'" 관련 최근 뉴스가 없습니다.</p>';
+        return;
+      }
+      $("newsSub").textContent=items.length+"건 · 네이버 뉴스 검색 최신순";
+      items.slice(0,5).forEach(function(it){
+        var div=document.createElement("div");div.className="eventcard";
+        var d=it.pubDate?new Date(it.pubDate):null;
+        var dtxt=d?(d.getFullYear()+"."+pad2(d.getMonth()+1)+"."+pad2(d.getDate())):"";
+        div.innerHTML='<h3>'+stripHtml(it.title)+'</h3><p>'+stripHtml(it.description)+'</p><span class="why">'+dtxt+'</span> <a href="'+(it.link||it.originallink||"#")+'" target="_blank" rel="noopener">기사 보기 →</a>';
+        host.appendChild(div);
+      });
+    })
+    .catch(function(){
+      $("newsSub").textContent="불러오기 실패";
+      host.innerHTML='<p class="eventempty">뉴스를 불러오지 못했습니다 — 잠시 후 다시 시도해 주세요.</p>';
+    });
 }
 function updateTransport(subs,busStops,subPop,busPop,road){
   var sh=$("subList");sh.innerHTML="";
@@ -1099,27 +1110,6 @@ function updateDigest(p,c,w,rsb,events){
     parts.push("오늘 이 상권 반경에서 <b>"+events.length+"건의 문화행사</b>가 진행 중입니다(예: "+events[0].EVENT_NM+") — 유동인구가 평소보다 늘 수 있어요.");
   }
   $("digestText").innerHTML=parts.join("");
-}
-function updateAdvice(p,c){
-  if(p){
-    var lvl=p.AREA_CONGEST_LVL||"–";
-    var lvlMsg={
-      "여유":"손이 비는 시간대 — 신메뉴 테스트·재고 정리·청소하기 좋습니다.",
-      "보통":"평소 패턴 범위 — 준비량 유지, 좌석 회전만 지켜보세요.",
-      "약간 붐빔":"평소보다 사람이 붙는 중 — 재료·인력 여유분을 점검하세요.",
-      "붐빔":"유동이 많은 시간대 — 회전·대기 안내를 신경 쓰세요.",
-      "매우 붐빔":"정점 시간대 — 재료 소진·대기열 관리가 최우선입니다."
-    };
-    $("advCongestH").textContent="지금 할 일";
-    $("advCongestP").textContent=lvlMsg[lvl]||"실시간 혼잡도에 맞춰 준비량을 조정하세요.";
-    $("advCongestW").textContent=lvl;
-    var nonres=+p.NON_RESNT_PPLTN_RATE||0;
-    $("advVisitH").textContent="손님 대응 팁";
-    $("advVisitP").textContent = nonres>=50
-      ? "외지 방문객이 더 많음 — 처음 오는 손님 기준으로 안내문·간판을 점검하세요."
-      : "동네 주민이 더 많음 — 단골 관리·재방문 유도가 효과적입니다.";
-    $("advVisitW").textContent="외지 방문객 "+Math.round(nonres)+"%";
-  }
 }
 /* ---- 오늘 다녀간 사람: 인구 가중 누적 ---- */
 var AGE_KEYS=[["10대 이하",["PPLTN_RATE_0","PPLTN_RATE_10"],"#B9C4BE"],["20대",["PPLTN_RATE_20"],"var(--jade)"],["30대",["PPLTN_RATE_30"],"var(--jade-soft)"],["40대",["PPLTN_RATE_40"],"var(--water)"],["50대",["PPLTN_RATE_50"],"#8AA0AD"],["60대+",["PPLTN_RATE_60","PPLTN_RATE_70"],"#B9C4BE"]];
@@ -1202,15 +1192,44 @@ function startTimer(){
 $("refreshBtn").onclick=refresh;
 
 /* ================= 상권·매장 설정 ================= */
-function fillAreaSelect(){
-  var dl=$("areaOptions");dl.innerHTML="";
+var areaSelected=POI;
+function renderAreaList(filterTxt){
+  var box=$("areaListBox");box.innerHTML="";
+  var q=(filterTxt||"").trim().toLowerCase();
+  var cats={};
   AREA_LIST.forEach(function(a){
-    var op=document.createElement("option");
-    op.value=a[0];op.label=a[1];
-    dl.appendChild(op);
+    if(q&&a[0].toLowerCase().indexOf(q)<0)return;
+    (cats[a[1]]=cats[a[1]]||[]).push(a[0]);
   });
-  $("areaSearch").value=POI;
+  var any=false;
+  Object.keys(cats).forEach(function(c){
+    any=true;
+    var h=document.createElement("div");h.className="arowcat";h.textContent=c;
+    box.appendChild(h);
+    cats[c].forEach(function(nm){
+      var row=document.createElement("div");
+      row.className="arow"+(nm===areaSelected?" sel":"");
+      row.textContent=nm;
+      row.onclick=function(){
+        areaSelected=nm;
+        $("areaSearch").value=nm;
+        renderAreaList($("areaSearch").value);
+      };
+      box.appendChild(row);
+    });
+  });
+  if(!any){
+    var empty=document.createElement("div");empty.className="arow";empty.style.cursor="default";
+    empty.textContent="일치하는 상권이 없습니다";
+    box.appendChild(empty);
+  }
 }
+function fillAreaSelect(){
+  areaSelected=POI;
+  $("areaSearch").value=POI;
+  renderAreaList("");
+}
+$("areaSearch").addEventListener("input",function(){renderAreaList($("areaSearch").value);});
 function renderStoreBrand(){
   $("storeName").textContent=POI;
   $("storeSub").textContent="서울 열린데이터광장 실시간 상권 리포트";
@@ -1220,14 +1239,14 @@ fillAreaSelect();
 renderStoreBrand();
 $("storeBtn").onclick=function(){
   $("storeSetup").hidden=!$("storeSetup").hidden;
-  if(!$("storeSetup").hidden)$("areaSearch").focus();
+  if(!$("storeSetup").hidden){fillAreaSelect();$("areaSearch").focus();}
 };
 $("storeSave").onclick=function(){
   var typed=$("areaSearch").value.trim();
-  var match=AREA_LIST.filter(function(a){return a[0]===typed;})[0];
+  var match=AREA_LIST.filter(function(a){return a[0]===typed||a[0]===areaSelected;})[0];
   if(!match){
     $("areaErr").hidden=false;
-    $("areaErr").textContent="목록에 있는 상권명을 정확히 선택해 주세요 (자동완성 목록에서 고르면 안전해요).";
+    $("areaErr").textContent="목록에서 상권을 클릭해 선택해 주세요.";
     return;
   }
   $("areaErr").hidden=true;
