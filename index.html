@@ -129,6 +129,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .fill{height:100%;background:var(--water);display:block}
 .fill.hi{background:var(--jade)}
 .bar .bv{font-family:var(--mono);font-size:12px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.bar-meta{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
 .surge ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
 .surge li{display:grid;grid-template-columns:1.6em 1fr auto;gap:8px;align-items:baseline;font-size:13.5px;padding:7px 10px;background:var(--inset);border:1px solid var(--line)}
 .surge li .rk{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-weight:600}
@@ -268,9 +269,11 @@ footer a{color:var(--water)}
     <h2>상권 설정</h2>
     <p>서울시가 실시간 데이터를 제공하는 <b>121개 주요 상권</b> 중 분석할 곳을 고르세요. 인증키·중계 서버는 이미 연결돼 있어 이것만 고르면 바로 보입니다.</p>
     <div class="keyrow">
-      <select id="areaSel" style="flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)"></select>
+      <input id="areaSearch" list="areaOptions" autocomplete="off" placeholder="상권 검색 (예: 성수, 강남역...)" style="flex:1 1 260px;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)">
+      <datalist id="areaOptions"></datalist>
       <button class="btn" id="storeSave">저장하고 불러오기</button>
     </div>
+    <p class="err" id="areaErr" hidden></p>
   </div>
 
   <div class="verdict" id="verdict">
@@ -316,7 +319,7 @@ footer a{color:var(--water)}
         <p class="cap" id="todayCap" style="margin-top:6px">보드를 켜두면 갱신 때마다 거리 인구 구성을 누적합니다. 사람이 많던 시간대일수록 무겁게 반영되어, 하루가 갈수록 "오늘 실제로 많이 온 사람"의 프로필이 됩니다.</p>
       </div>
       <div>
-        <h3 class="lvh">업종별 소비 <span class="sup">10분 결제액 기준</span></h3>
+        <h3 class="lvh">업종별 소비 <span class="sup">10분 결제액·가맹점 수·건당 평균</span></h3>
         <ul class="bars" id="consInd"></ul>
       </div>
     </div>
@@ -374,7 +377,7 @@ footer a{color:var(--water)}
   <section class="card" id="eventCard">
     <div class="ct">
       <h2>오늘의 문화행사</h2>
-      <span class="sub">서울시 문화행사 정보 · 이 상권 반경 기준</span>
+      <span class="sub" id="eventSub">서울시 문화행사 정보 · 이 상권 반경 기준</span>
     </div>
     <div id="eventList"></div>
   </section>
@@ -391,9 +394,9 @@ footer a{color:var(--water)}
   <section class="card" id="curveCard">
     <div class="ct">
       <h2>수요 곡선 위의 우리 영업시간</h2>
-      <span class="sub">회색 밴드 = 월요일 기준선 · 옥색 점선 = 오늘 실시간 예측</span>
+      <span class="sub">실선 = 오늘 실측(과거)·예측(향후 12시간) 유동</span>
     </div>
-    <svg id="curve" role="img" aria-label="시간대별 유동인구 곡선 위에 영업시간 블록과 오늘의 실시간 예측이 겹쳐진 차트"></svg>
+    <svg id="curve" role="img" aria-label="시간대별 유동인구 곡선 위에 영업시간 블록이 겹쳐진 차트"></svg>
     <div class="simbar">
       <div class="sim-item"><span class="l">영업 중 평균 유동</span><span class="v" id="mAvg">–</span></div>
       <div class="sim-item"><span class="l">라스트오더 시각 유동</span><span class="v" id="mLo">–</span></div>
@@ -410,11 +413,7 @@ footer a{color:var(--water)}
       </div>
     </div>
     <p class="simnote" id="simText"></p>
-    <p class="cap" id="curveCap">블록 경계 드래그 또는 +/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 선택한 상권 전체 유동(우리 매장 방문객 아님) — 상대 비교용입니다.</p>
-  </section>
-  <section class="card" id="curveFallback" hidden>
-    <div class="ct"><h2>수요 곡선 위의 우리 영업시간</h2></div>
-    <p class="cap">선택하신 상권은 아직 요일별 기준선(과거 패턴) 데이터가 준비되지 않았습니다. 실시간 유동인구·혼잡도는 위 "실시간 상권 신호"에서 계속 확인할 수 있어요. 기준선은 현재 <b>성수카페거리</b>만 지원합니다.</p>
+    <p class="cap" id="curveCap">+/− 버튼으로 영업시간을 바꿔 계산해 보세요. 곡선은 선택한 상권 전체 유동(우리 매장 방문객 아님) — 상대 비교용이며, 121곳 모두 이 브라우저에서 실제로 관측·예측한 값입니다. 갱신 초반엔 데이터가 적어 비어 보일 수 있어요.</p>
   </section>
 
   <section>
@@ -446,13 +445,13 @@ footer a{color:var(--water)}
 
   <div class="grid2">
     <section class="card">
-      <div class="ct"><h2>지금 거리의 100명</h2><span class="sub" id="isoTime">실시간</span></div>
+      <div class="ct"><h2>지금 거리의 구성</h2><span class="sub" id="isoTime">실시간</span></div>
       <div class="tabs" role="tablist" aria-label="손님 구성 보기">
         <button role="tab" aria-selected="true" data-lens="age">연령</button>
         <button role="tab" aria-selected="false" data-lens="res">사는 곳</button>
         <button role="tab" aria-selected="false" data-lens="sex">성별</button>
       </div>
-      <div class="iso" id="iso" aria-hidden="true"></div>
+      <div id="iso"></div>
       <div class="isoleg" id="isoleg"></div>
       <p class="cap" id="isocap"></p>
     </section>
@@ -460,19 +459,10 @@ footer a{color:var(--water)}
     <section class="card">
       <div class="ct"><h2>이 골목의 경쟁 지형</h2><span class="sub">카드 가맹점 수</span></div>
       <svg id="tmap" role="img" aria-label="업종별 가맹점 수 트리맵"></svg>
+      <div class="isoleg" id="tmapLeg" style="margin-top:2px"></div>
       <p class="cap" id="tmapCap">면적 = 가맹점 수. 이 상권에서 어떤 업종이 두꺼운지 한눈에 봅니다.</p>
     </section>
   </div>
-
-  <section class="card">
-    <div class="ct"><h2>손님에게 보낼 안내문</h2><span class="sub">프로필·플레이스·예약 확인 문자용 · 직접 수정 가능</span></div>
-    <textarea id="copysrc" rows="5" style="width:100%;font-family:var(--sans);font-size:13.5px;line-height:1.75;color:var(--ink-2);background:var(--inset);border:1px dashed var(--line-2);padding:14px 16px;resize:vertical" placeholder="📍 매장 이름 — 위치&#10;🚇 오시는 길&#10;🚗 주차 안내&#10;⏰ 영업시간"></textarea>
-    <div class="copyrow">
-      <button class="btn" id="copybtn">안내문 복사</button>
-      <button class="btn ghost" id="copySave">저장</button>
-      <span id="copymsg">복사됐습니다 — 그대로 붙여넣으세요</span>
-    </div>
-  </section>
 
   <section class="card">
     <div class="ct"><h2>요일 리듬 수집 현황</h2><span class="sub">보드를 연 날짜가 자동 기록됩니다</span></div>
@@ -486,7 +476,7 @@ footer a{color:var(--water)}
 
     <section class="card">
       <h3>이 보드는 무엇인가</h3>
-      <p>내 매장을 위한 <b>아침 운영 대시보드</b>입니다. 상단 [상권] 버튼에서 분석할 상권(121곳 중 하나)을 고르면, 서울시가 공개하는 그 상권의 실시간 데이터(유동인구·카드소비·교통·문화행사·날씨·예측)를 보여줍니다. 인증키와 중계 서버는 이미 연결돼 있어 <b>상권 선택 하나로 바로</b> 작동합니다.</p>
+      <p>내 매장을 위한 <b>아침 운영 대시보드</b>입니다. 상단 [상권] 버튼에서 검색창에 이름을 입력해 상권(121곳 중 하나)을 고르면, 서울시가 공개하는 그 상권의 실시간 데이터(유동인구·카드소비·교통·문화행사·날씨·예측)를 보여줍니다. 인증키와 중계 서버는 이미 연결돼 있어 <b>상권 선택 하나로 바로</b> 작동합니다.</p>
     </section>
 
     <section class="card">
@@ -500,7 +490,7 @@ footer a{color:var(--water)}
         <li><span class="step">1</span>파일을 더블클릭해 엽니다. 이후 10분마다 자동 갱신되고, <b>[지금 갱신]</b>으로 즉시 새로고침할 수 있습니다.</li>
         <li><span class="step">2</span><b>판단 배지</b>부터 봅니다 — "준비량 유지"면 평소대로, <b>"증량 검토"</b>로 바뀌면 재료·인력 여유분 점검.</li>
         <li><span class="step">3</span><b>오늘 시간대별 날씨</b> — 노란 테두리(브런치 창 10–15시)에 파란 칸(강수확률 50%↑)이 있으면 우산·실내 회전 준비.</li>
-        <li><span class="step">4</span><b>수요 곡선</b> — 옥색 점선(오늘 예측)이 회색 밴드(월요일 기준선)보다 높으면 평소보다 붐비는 날입니다.</li>
+        <li><span class="step">4</span><b>수요 곡선</b> — 실선이 높을수록 그 시간대 유동이 많다는 뜻입니다. 지금 이전은 실측치, 이후는 예측치입니다.</li>
         <li><span class="step">5</span>필요할 때 <b>오늘의 조언</b>과 나머지 섹션을 참고합니다.</li>
       </ol>
     </section>
@@ -513,10 +503,9 @@ footer a{color:var(--water)}
         <dt>자가 급증 감지</dt><dd>약 45분 전 관측 대비 <b>인구 +20% 또는 소비 +30%</b>면 ▲ 표시와 함께 상단 판단이 '증량 검토'로 자동 전환됩니다.</dd>
         <dt>최근 추이</dt><dd>이 브라우저에 최대 7일치까지 쌓이는 <b>실측 기록</b>입니다(새로고침해도 유지, 사이트 데이터 삭제 시에만 초기화). 121곳 어디를 고르든 표시되며, 요일별 과거 기준선과는 다른 데이터입니다.</dd>
         <dt>핫플 실시간 비교</dt><dd>같은 카테고리의 다른 상권들과 지금 이 순간의 유동인구를 비교합니다. 내 상권 줄이 옥색입니다.</dd>
-        <dt>수요 곡선·시뮬레이터</dt><dd>옥색 블록이 영업시간(기본 09–17시). 블록 경계를 드래그하거나 +/− 버튼으로 바꾸면 "영업 중 평균 유동"이 다시 계산됩니다. 마감 연장을 검토할 때 쓰세요. 조정값은 자동 저장됩니다.</dd>
-        <dt>지금 거리의 100명</dt><dd>현재 순간의 거리 인구 100명 환산. 연령/사는 곳/성별 탭 전환.</dd>
+        <dt>수요 곡선·시뮬레이터</dt><dd>옥색 블록이 영업시간(기본 09–17시). +/− 버튼으로 바꾸면 "영업 중 평균 유동"이 다시 계산됩니다. 121곳 모두 이 브라우저가 직접 관측·예측한 값을 씁니다. 마감 연장을 검토할 때 쓰세요. 조정값은 자동 저장됩니다.</dd>
+        <dt>지금 거리의 구성</dt><dd>현재 순간의 거리 인구 비율을 막대그래프로 표시. 연령/사는 곳/성별 탭 전환.</dd>
         <dt>경쟁 지형</dt><dd>업종별 카드 가맹점 수 트리맵. 면적이 클수록 그 업종 가게가 많다는 뜻입니다.</dd>
-        <dt>안내문</dt><dd>[안내문 복사] 버튼 → 인스타 프로필·네이버 플레이스·예약 확인 문자에 그대로 붙여넣기.</dd>
         <dt>요일 리듬</dt><dd>보드를 연 요일이 자동 기록됩니다. 일주일을 채우면 요일별 감이 생깁니다.</dd>
       </dl>
     </section>
@@ -526,46 +515,15 @@ footer a{color:var(--water)}
       <ul>
         <li>유동·소비는 <b>선택한 상권 전체</b> 기준입니다 — 우리 매장 방문객 수가 아니라 <b>상대 비교용</b>입니다.</li>
         <li>카드소비는 <b>10분 스냅샷</b>이라 표본이 작습니다. 한 번의 수치보다 추세를 보세요.</li>
-        <li>곡선의 회색 밴드는 2026-08-31(월) 수집 기준선입니다. 주말은 다르게 움직입니다 — 옥색 점선(오늘 예측)을 우선하세요.</li>
       </ul>
     </section>
 
     <section class="card">
       <h3>문제가 생기면</h3>
       <dl class="kv">
-        <dt>"갱신 실패"</dt><dd>Cloudflare Worker가 잠깐 응답하지 않거나 인증키(SEOUL_KEY) 설정이 빠진 경우입니다. Worker 대시보드에서 Settings → Variables and secrets에 SEOUL_KEY가 있는지 확인하세요.</dd>
-        <dt>Worker 주소를 바꾸고 싶다</dt><dd>파일을 메모장으로 열어 <code>CONFIG</code> 근처의 <code>WORKER_URL</code> 값을 새 Worker 주소로 바꾸면 됩니다.</dd>
-        <dt>누적 기록 초기화</dt><dd>브라우저 설정에서 "사이트 데이터 삭제"를 하면 이 브라우저 쪽 누적 관측이 지워집니다(Worker의 KV 저장분은 별도라 안 지워집니다). 서버쪽까지 지우려면 Cloudflare KV 대시보드에서 직접 삭제해야 합니다.</dd>
-        <dt>비교 핫플·갱신 주기 변경</dt><dd>파일을 메모장으로 열어 상단 <code>CONFIG</code>의 <code>INTERVAL_MIN</code>을 수정하면 됩니다. 비교 상권은 같은 카테고리에서 자동으로 골라집니다.</dd>
+        <dt>"갱신 실패"</dt><dd>인터넷 연결을 확인하고 [지금 갱신]을 다시 눌러보세요. 계속되면 잠시 후 다시 시도해 주세요.</dd>
+        <dt>누적 기록 초기화</dt><dd>브라우저 설정에서 "사이트 데이터 삭제"를 하면 이 브라우저의 누적 관측이 지워집니다(파일 자체는 무관).</dd>
       </dl>
-    </section>
-
-    <section class="card">
-      <h3>Worker를 다시 만들거나 다른 상권용으로 새로 하나 더 만들고 싶다면</h3>
-      <p>무료 공개 프록시는 예고 없이 멈추거나 막히는 경우가 잦습니다. Cloudflare Workers로 내 소유의 중계 주소를 하나 만들어두면 이런 문제가 사라집니다.</p>
-      <ol>
-        <li><span class="step">1</span><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a>에서 무료 계정 가입</li>
-        <li><span class="step">2</span>왼쪽 메뉴 <b>Workers & Pages</b> → <b>Create</b> → <b>Create Worker</b> 선택 (이름은 아무거나, 예: <code>jw-proxy</code>)</li>
-        <li><span class="step">3</span><b>Deploy</b>로 일단 기본 상태로 배포한 뒤, <b>Edit code</b>(코드 편집) 클릭</li>
-        <li><span class="step">4</span>편집기 안의 기존 코드를 전부 지우고 아래 코드를 붙여넣기:
-          <br><code style="display:block;white-space:pre-wrap;margin-top:6px;padding:10px;background:var(--inset);border:1px solid var(--line)">export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    const target = url.searchParams.get("url");
-    if (!target) return new Response("Missing url", {status:400});
-    const resp = await fetch(target);
-    const body = await resp.arrayBuffer();
-    return new Response(body, {
-      status: resp.status,
-      headers: {"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
-    });
-  }
-}</code></li>
-        <li><span class="step">5</span>오른쪽 위 <b>Deploy</b> 클릭 → 완료되면 <code>https://jw-proxy.내계정.workers.dev</code> 같은 주소가 생깁니다</li>
-        <li><span class="step">6</span>이 보드로 돌아와 상단 <b>[키]</b> 버튼 → "내 프록시 URL" 칸에 그 주소를 붙여넣고 <b>[프록시 저장]</b></li>
-      </ol>
-      <p style="margin-top:6px">이후로는 이 프록시가 항상 최우선으로 쓰이고, 무료 공개 프록시가 죽어도 영향받지 않습니다.</p>
-      <p style="margin-top:6px"><b>추가로 Cron Trigger + KV를 연결하면</b>(Worker Settings → Trigger events → Cron Trigger 추가, Bindings에서 KV 이름을 <code>JW_KV</code>로, 인증키를 Secret <code>SEOUL_KEY</code>로 등록) 브라우저를 꺼둬도 서버가 알아서 10분마다 데이터를 모아둡니다. "최근 추이" 카드가 이 저장분을 자동으로 가져와 합칩니다.</p>
     </section>
 
   </div><!-- /pageManual -->
@@ -573,7 +531,7 @@ footer a{color:var(--water)}
   <footer>
     <b>내 Cloudflare Worker 경유형</b> — 인증키는 Worker에만 안전하게 보관되고, 이 파일은 그 Worker를 거쳐 서울시 열린데이터광장 <code>citydata</code> API를 호출합니다. 상권 선택과 추이 기록은 이 브라우저(localStorage)와 Worker(KV)에 이중 저장됩니다.<br>
     출처 — 서울 열린데이터광장 실시간 도시데이터 <code>citydata</code>(선택한 상권 기준)<br>
-    한계 — 유동·소비는 거리 전체 기준(매장 방문객 아님) · 소비는 10분 표본 · 월요일 기준선은 2026-08-31 수집. 참고: 사내망·보안 프로그램이 http 요청을 막으면 갱신이 실패할 수 있습니다.
+    한계 — 유동·소비는 거리 전체 기준(매장 방문객 아님) · 소비는 10분 표본 · 수요 곡선은 오늘 관측·예측치라 데이터가 쌓이기 전에는 비어 보일 수 있습니다.
   </footer>
 </div>
 
@@ -583,7 +541,6 @@ footer a{color:var(--water)}
 /* ================= CONFIG ================= */
 var AREA_LIST=[["강남 MICE 관광특구", "관광특구"], ["동대문 관광특구", "관광특구"], ["명동 관광특구", "관광특구"], ["이태원 관광특구", "관광특구"], ["잠실 관광특구", "관광특구"], ["종로·청계 관광특구", "관광특구"], ["홍대 관광특구", "관광특구"], ["경복궁", "고궁·문화유산"], ["광화문·덕수궁", "고궁·문화유산"], ["보신각", "고궁·문화유산"], ["서울 암사동 유적", "고궁·문화유산"], ["창덕궁·종묘", "고궁·문화유산"], ["가산디지털단지역", "인구밀집지역"], ["강남역", "인구밀집지역"], ["건대입구역", "인구밀집지역"], ["고덕역", "인구밀집지역"], ["고속터미널역", "인구밀집지역"], ["교대역", "인구밀집지역"], ["구로디지털단지역", "인구밀집지역"], ["구로역", "인구밀집지역"], ["군자역", "인구밀집지역"], ["대림역", "인구밀집지역"], ["동대문역", "인구밀집지역"], ["뚝섬역", "인구밀집지역"], ["미아사거리역", "인구밀집지역"], ["발산역", "인구밀집지역"], ["사당역", "인구밀집지역"], ["삼각지역", "인구밀집지역"], ["서울대입구역", "인구밀집지역"], ["서울식물원·마곡나루역", "인구밀집지역"], ["서울역", "인구밀집지역"], ["선릉역", "인구밀집지역"], ["성신여대입구역", "인구밀집지역"], ["수유역", "인구밀집지역"], ["신논현역·논현역", "인구밀집지역"], ["신도림역", "인구밀집지역"], ["신림역", "인구밀집지역"], ["신촌·이대역", "인구밀집지역"], ["양재역", "인구밀집지역"], ["역삼역", "인구밀집지역"], ["연신내역", "인구밀집지역"], ["오목교역·목동운동장", "인구밀집지역"], ["왕십리역", "인구밀집지역"], ["용산역", "인구밀집지역"], ["이태원역", "인구밀집지역"], ["장지역", "인구밀집지역"], ["장한평역", "인구밀집지역"], ["천호역", "인구밀집지역"], ["총신대입구(이수)역", "인구밀집지역"], ["충정로역", "인구밀집지역"], ["합정역", "인구밀집지역"], ["혜화역", "인구밀집지역"], ["홍대입구역(2호선)", "인구밀집지역"], ["회기역", "인구밀집지역"], ["가락시장", "발달상권"], ["가로수길", "발달상권"], ["광장(전통)시장", "발달상권"], ["김포공항", "발달상권"], ["노량진", "발달상권"], ["덕수궁길·정동길", "발달상권"], ["북촌한옥마을", "발달상권"], ["서촌", "발달상권"], ["성수카페거리", "발달상권"], ["쌍문역", "인구밀집지역"], ["압구정로데오거리", "발달상권"], ["여의도", "발달상권"], ["연남동", "발달상권"], ["영등포 타임스퀘어", "발달상권"], ["용리단길", "발달상권"], ["이태원 앤틱가구거리", "발달상권"], ["인사동", "발달상권"], ["창동 신경제 중심지", "발달상권"], ["청담동 명품거리", "발달상권"], ["청량리 제기동 일대 전통시장", "발달상권"], ["해방촌·경리단길", "발달상권"], ["DDP(동대문디자인플라자)", "발달상권"], ["DMC(디지털미디어시티)", "발달상권"], ["강서한강공원", "공원"], ["고척돔", "공원"], ["광나루한강공원", "공원"], ["광화문광장", "공원"], ["국립중앙박물관·용산가족공원", "공원"], ["난지한강공원", "공원"], ["남산공원", "공원"], ["노들섬", "공원"], ["뚝섬한강공원", "공원"], ["망원한강공원", "공원"], ["반포한강공원", "공원"], ["북서울꿈의숲", "공원"], ["서리풀공원·몽마르뜨공원", "공원"], ["서울대공원", "공원"], ["서울숲공원", "공원"], ["아차산", "공원"], ["양화한강공원", "공원"], ["어린이대공원", "공원"], ["여의도한강공원", "공원"], ["월드컵공원", "공원"], ["응봉산", "공원"], ["이촌한강공원", "공원"], ["잠실종합운동장", "공원"], ["잠실한강공원", "공원"], ["잠원한강공원", "공원"], ["청계산", "공원"], ["북창동 먹자골목", "발달상권"], ["남대문시장", "발달상권"], ["익선동", "발달상권"], ["신정네거리역", "인구밀집지역"], ["잠실새내역", "인구밀집지역"], ["잠실역", "인구밀집지역"], ["잠실롯데타워·석촌호수", "발달상권"], ["송리단길·호수단길", "발달상권"], ["신촌 스타광장", "발달상권"], ["보라매공원", "공원"], ["서대문독립공원", "공원"], ["안양천", "공원"], ["여의서로", "공원"], ["올림픽공원", "공원"], ["홍제폭포", "공원"], ["송현녹지광장", "공원"], ["시의회 앞", "인구밀집지역"], ["숭례문", "인구밀집지역"]]; /* [이름, 카테고리] 서울시 실시간 도시데이터 공식 121장소 */
 var DEFAULT_AREA="성수카페거리";
-var CURVE_AREAS={"성수카페거리":true}; /* 요일별 기준선 데이터가 준비된 상권 */
 var POI=lsGet("jw_area",DEFAULT_AREA);
 var INTERVAL_MIN=10;
 var HIST_MAX_DAYS=7; /* 추이 기록 보관 기간 — localStorage(이 브라우저)에 쌓입니다 */
@@ -611,101 +568,125 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function fmtMan(v){return (Math.round(v/1000)/10).toFixed(1).replace(/\.0$/,"")+"만";}
 function pad2(n){return String(n).padStart(2,"0");}
 
-/* ================= 곡선 (월요일 기준선 + 라이브 예측) ================= */
-var pMin=[16000,24000,30000,32000,34000,36000,36000,36000,36000,32000,30000,28000,24000,20000,16000,12000,8000,7000,6500,6500,6500,6500,7500,12000,16000];
-var pMax=[18000,26000,32000,34000,36000,38000,38000,38000,38000,34000,32000,30000,26000,22000,18000,14000,8500,7500,7000,7000,7000,7000,8000,14000,18000];
-var mid=pMin.map(function(v,i){return (v+pMax[i])/2;});
-var H0=8,N=pMin.length;
+/* ================= 곡선(오늘 실측+예측, 121곳 전체 공용) ================= */
+var H0=0,N=25; /* 0~24시 */
 var open=9,close=17,LO_OFF=1;
 var sv=lsGet("jw_hours",null);
-if(sv&&sv.o>=8&&sv.c<=24&&sv.c-sv.o>=2){open=sv.o;close=sv.c;}
-
+if(sv&&sv.o>=0&&sv.c<=24&&sv.c-sv.o>=2){open=sv.o;close=sv.c;}
 var CW=1000,CH=380,mL=56,mR=20,mT=26,mB=46;
-var iw=CW-mL-mR,ih=CH-mT-mB,YMAX=40000;
+var iw=CW-mL-mR,ih=CH-mT-mB;
+var mid=new Array(N).fill(null);
+var YMAX=40000;
 function cx(h){return mL+(h-H0)/(N-1)*iw;}
 function cy(v){return mT+(1-v/YMAX)*ih;}
 var svg=$("curve");
-svg.setAttribute("viewBox","0 0 "+CW+" "+CH);
-for(var v=0;v<=YMAX;v+=10000){
-  svg.appendChild(el("line",{x1:mL,y1:cy(v),x2:mL+iw,y2:cy(v),stroke:"var(--line)","stroke-width":1}));
-  var yl=el("text",{x:mL-10,y:cy(v)+4,"text-anchor":"end",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
-  yl.textContent=v===0?"0":(v/10000)+"만";svg.appendChild(yl);
-}
-for(var i=0;i<N;i+=2){
-  var xl=el("text",{x:cx(H0+i),y:mT+ih+22,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
-  xl.textContent=(H0+i)%24;svg.appendChild(xl);
-}
-var block=el("rect",{y:mT,height:ih,fill:"var(--jade-wash)"});
-var openEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
-var closeEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
-var loLine=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":1.4,"stroke-dasharray":"4 4",opacity:.75});
-var openGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
-var closeGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
-var blockLab=el("text",{y:mT+20,"text-anchor":"start",fill:"var(--jade-deep)","font-family":"var(--mono)","font-size":13,"font-weight":600});
-var loLab=el("text",{y:mT+ih-8,"text-anchor":"middle",fill:"var(--jade)","font-family":"var(--mono)","font-size":11});
-svg.appendChild(block);
-var band="";
-for(i=0;i<N;i++)band+=(i?"L":"M")+cx(H0+i)+" "+cy(pMax[i]);
-for(i=N-1;i>=0;i--)band+="L"+cx(H0+i)+" "+cy(pMin[i]);
-svg.appendChild(el("path",{d:band+"Z",fill:"var(--water-wash)"}));
-var top="";
-for(i=0;i<N;i++)top+=(i?"L":"M")+cx(H0+i)+" "+cy(pMax[i]);
-svg.appendChild(el("path",{d:top,fill:"none",stroke:"var(--water)","stroke-width":2,"stroke-linejoin":"round",opacity:.75}));
-var fcstPath=el("path",{fill:"none",stroke:"var(--jade)","stroke-width":3,"stroke-dasharray":"7 5","stroke-linejoin":"round"});
-svg.appendChild(fcstPath);
-var nowDot=el("circle",{r:5.5,fill:"var(--ink)",visibility:"hidden"});
-var nowLab=el("text",{fill:"var(--ink)","font-family":"var(--mono)","font-size":12,"font-weight":600});
-svg.appendChild(nowDot);svg.appendChild(nowLab);
-[openEdge,closeEdge,loLine,openGrip,closeGrip,blockLab,loLab].forEach(function(n){svg.appendChild(n);});
-
-function avgRange(a,b){var s=0,c=0;for(var h=a;h<b;h++){var ix=h-H0;if(ix>=0&&ix<N){s+=mid[ix];c++;}}return c?s/c:0;}
-var baseAvg=avgRange(9,17);
-function renderSim(){
-  var x0=cx(open),x1=cx(close);
-  block.setAttribute("x",x0);block.setAttribute("width",x1-x0);
-  openEdge.setAttribute("x1",x0);openEdge.setAttribute("x2",x0);
-  closeEdge.setAttribute("x1",x1);closeEdge.setAttribute("x2",x1);
-  openGrip.setAttribute("x",x0-7);closeGrip.setAttribute("x",x1-7);
-  var lo=close-LO_OFF,xl2=cx(lo);
-  loLine.setAttribute("x1",xl2);loLine.setAttribute("x2",xl2);
-  blockLab.setAttribute("x",x0+10);
-  blockLab.textContent="영업 "+pad2(open)+"–"+pad2(close%24)+"시";
-  loLab.setAttribute("x",xl2);loLab.textContent="L.O "+(lo%24)+"시";
-  $("oVal").textContent=pad2(open)+"시";$("cVal").textContent=pad2(close%24)+"시";
-  var a=avgRange(open,close),loV=mid[lo-H0]||0,aft=avgRange(close,close+2);
-  $("mAvg").innerHTML=fmtMan(a)+"<em> 명</em>";
-  $("mLo").innerHTML=fmtMan(loV)+"<em> 명</em>";
-  $("mAfter").innerHTML=fmtMan(aft)+"<em> 명</em>";
-  var t;
-  if(open===9&&close===17){
-    t="현재 영업시간 그대로입니다. 마감(17시) 후에도 두 시간 동안 평균 <b>"+fmtMan(aft)+" 명</b>이 거리에 남습니다.";
-  }else{
-    var d=a-baseAvg,sign=d>=0?"+":"−",ad=Math.abs(d);
-    var dTxt=ad>=10000?fmtMan(ad)+" 명":Math.round(ad/100)*100+"명";
-    t="기본(09–17시) 대비 영업 중 평균 유동 <b>"+sign+dTxt+"</b>. ";
-    t+=close>17?"연장한 저녁 구간은 인구가 내려가는 구간임을 감안하세요 — 객단가가 다르면 이야기가 달라집니다.":"단축·이동한 만큼 인력 계획도 함께 움직여야 합니다.";
+function avgRange(a,b){var s=0,c=0;for(var h=a;h<b;h++){if(mid[h]!=null){s+=mid[h];c++;}}return c?s/c:0;}
+function redrawCurve(){
+  svg.innerHTML="";
+  svg.setAttribute("viewBox","0 0 "+CW+" "+CH);
+  var step=Math.max(10000,Math.round(YMAX/4/5000)*5000);
+  for(var v=0;v<=YMAX;v+=step){
+    svg.appendChild(el("line",{x1:mL,y1:cy(v),x2:mL+iw,y2:cy(v),stroke:"var(--line)","stroke-width":1}));
+    var yl=el("text",{x:mL-10,y:cy(v)+4,"text-anchor":"end",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
+    yl.textContent=v===0?"0":fmtMan(v);svg.appendChild(yl);
   }
+  for(var i=0;i<N;i+=2){
+    var xl=el("text",{x:cx(H0+i),y:mT+ih+22,"text-anchor":"middle",fill:"var(--ink-3)","font-family":"var(--mono)","font-size":12});
+    xl.textContent=(H0+i)%24;svg.appendChild(xl);
+  }
+  var d="";
+  for(var h=0;h<N;h++){
+    if(mid[h]==null)continue;
+    d+=(d&&mid[h-1]!=null?"L":"M")+cx(h)+" "+cy(Math.min(mid[h],YMAX));
+  }
+  if(d)svg.appendChild(el("path",{d:d,fill:"none",stroke:"var(--water)","stroke-width":2.5,"stroke-linejoin":"round"}));
+  var nw=new Date(),nh=Math.round(nw.getHours()+nw.getMinutes()/60);
+  if(mid[nh]!=null){
+    svg.appendChild(el("circle",{cx:cx(nh),cy:cy(Math.min(mid[nh],YMAX)),r:5,fill:"var(--ink)"}));
+    var nlab=el("text",{x:cx(nh)+8,y:cy(Math.min(mid[nh],YMAX))-8,fill:"var(--ink)","font-family":"var(--mono)","font-size":12,"font-weight":600});
+    nlab.textContent="지금";svg.appendChild(nlab);
+  }
+  var block=el("rect",{y:mT,height:ih,fill:"var(--jade-wash)"});
+  var openEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
+  var closeEdge=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":2.5});
+  var loLine=el("line",{y1:mT,y2:mT+ih,stroke:"var(--jade)","stroke-width":1.4,"stroke-dasharray":"4 4",opacity:.75});
+  var openGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
+  var closeGrip=el("rect",{y:mT+ih/2-26,width:14,height:52,rx:3,fill:"var(--jade)",cursor:"ew-resize"});
+  var blockLab=el("text",{y:mT+20,"text-anchor":"start",fill:"var(--jade-deep)","font-family":"var(--mono)","font-size":13,"font-weight":600});
+  var loLab=el("text",{y:mT+ih-8,"text-anchor":"middle",fill:"var(--jade)","font-family":"var(--mono)","font-size":11});
+  svg.appendChild(block);
+  [openEdge,closeEdge,loLine,openGrip,closeGrip,blockLab,loLab].forEach(function(n){svg.appendChild(n);});
+  function positionSim(){
+    var x0=cx(open),x1=cx(close);
+    block.setAttribute("x",x0);block.setAttribute("width",x1-x0);
+    openEdge.setAttribute("x1",x0);openEdge.setAttribute("x2",x0);
+    closeEdge.setAttribute("x1",x1);closeEdge.setAttribute("x2",x1);
+    openGrip.setAttribute("x",x0-7);closeGrip.setAttribute("x",x1-7);
+    var lo=close-LO_OFF,xl2=cx(lo);
+    loLine.setAttribute("x1",xl2);loLine.setAttribute("x2",xl2);
+    blockLab.setAttribute("x",x0+10);
+    blockLab.textContent="영업 "+pad2(open)+"–"+pad2(close%24)+"시";
+    loLab.setAttribute("x",xl2);loLab.textContent="L.O "+(lo%24)+"시";
+  }
+  positionSim();
+  function hourFromEvent(ev){var r=svg.getBoundingClientRect();var x=(ev.clientX-r.left)/r.width*CW;return Math.max(H0,Math.min(H0+N-1,Math.round((x-mL)/iw*(N-1))+H0));}
+  function grip(node,isOpen){
+    node.addEventListener("pointerdown",function(ev){
+      node.setPointerCapture(ev.pointerId);
+      function mv(e){var h=hourFromEvent(e);if(isOpen)setOpen(h);else setClose(h);positionSim();}
+      function up(){node.removeEventListener("pointermove",mv);node.removeEventListener("pointerup",up);}
+      node.addEventListener("pointermove",mv);node.addEventListener("pointerup",up);
+      ev.preventDefault();
+    });
+  }
+  grip(openGrip,true);grip(closeGrip,false);
+}
+function renderSim(){
+  $("oVal").textContent=pad2(open)+"시";$("cVal").textContent=pad2(close%24)+"시";
+  var a=avgRange(open,close),lo=close-LO_OFF,aft=avgRange(close,Math.min(close+2,24));
+  $("mAvg").innerHTML=(a?fmtMan(a):"–")+"<em> 명</em>";
+  $("mLo").innerHTML=(mid[lo]!=null?fmtMan(mid[lo]):"–")+"<em> 명</em>";
+  $("mAfter").innerHTML=(aft?fmtMan(aft):"–")+"<em> 명</em>";
+  var hasData=mid.some(function(v){return v!=null;});
+  var t=hasData
+    ? "영업시간("+pad2(open)+"–"+pad2(close%24)+"시) 평균 유동 <b>"+(a?fmtMan(a):"–")+" 명</b>. 마감 후 2시간 평균은 <b>"+(aft?fmtMan(aft):"–")+" 명</b>입니다."
+    : "아직 오늘 관측된 유동인구가 부족합니다 — 갱신이 몇 번 더 쌓이면 곡선이 채워집니다.";
   $("simText").innerHTML=t;
   lsSet("jw_hours",{o:open,c:close});
+  redrawCurve();
 }
-function setOpen(h){open=Math.max(8,Math.min(h,close-2));renderSim();}
+function setOpen(h){open=Math.max(0,Math.min(h,close-2));renderSim();}
 function setClose(h){close=Math.min(24,Math.max(h,open+2));renderSim();}
 $("oMinus").onclick=function(){setOpen(open-1);};
 $("oPlus").onclick=function(){setOpen(open+1);};
 $("cMinus").onclick=function(){setClose(close-1);};
 $("cPlus").onclick=function(){setClose(close+1);};
-function hourFromEvent(ev){var r=svg.getBoundingClientRect();var x=(ev.clientX-r.left)/r.width*CW;return Math.round((x-mL)/iw*(N-1))+H0;}
-function grip(node,isOpen){
-  node.addEventListener("pointerdown",function(ev){
-    node.setPointerCapture(ev.pointerId);
-    function mv(e){var h=hourFromEvent(e);if(isOpen)setOpen(h);else setClose(h);}
-    function up(){node.removeEventListener("pointermove",mv);node.removeEventListener("pointerup",up);}
-    node.addEventListener("pointermove",mv);node.addEventListener("pointerup",up);
-    ev.preventDefault();
-  });
-}
-grip(openGrip,true);grip(closeGrip,false);
 renderSim();
+function updateDayCurve(p){
+  var today=new Date();
+  var dkey=today.getFullYear()+"-"+pad2(today.getMonth()+1)+"-"+pad2(today.getDate());
+  var hist=lsGet("jw_hist",[]);
+  var newMid=new Array(N).fill(null);
+  hist.forEach(function(h){
+    var d=new Date(h.t);
+    var dk=d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+    if(dk!==dkey||h.pm==null)return;
+    newMid[d.getHours()]=h.pm;
+  });
+  if(p&&p.FCST_PPLTN){
+    p.FCST_PPLTN.forEach(function(r){
+      var dt=new Date(r.FCST_TIME.replace(" ","T"));
+      var dk=dt.getFullYear()+"-"+pad2(dt.getMonth()+1)+"-"+pad2(dt.getDate());
+      if(dk!==dkey)return;
+      var hr=dt.getHours();
+      if(newMid[hr]==null)newMid[hr]=((+r.FCST_PPLTN_MIN)+(+r.FCST_PPLTN_MAX))/2;
+    });
+  }
+  mid=newMid;
+  var vals=mid.filter(function(v){return v!=null;});
+  YMAX=vals.length?Math.max.apply(null,vals)*1.15:40000;
+  renderSim();
+}
 
 /* ================= 아이소타입 ================= */
 var LENS={
@@ -716,26 +697,19 @@ var LENS={
   sex:{cap:"성별 구성입니다.",segs:[["여성",52,"var(--jade)"],["남성",48,"var(--water)"]]}
 };
 var curLens="age";
-function person(color){
-  var s=el("svg",{viewBox:"0 0 20 26"});
-  s.appendChild(el("circle",{cx:10,cy:6,r:5,fill:color}));
-  s.appendChild(el("path",{d:"M3 25 q0 -12 7 -12 q7 0 7 12 Z",fill:color}));
-  return s;
-}
 function drawLens(key){
   curLens=key;
   var isoHost=$("iso"),legHost=$("isoleg");
   isoHost.innerHTML="";legHost.innerHTML="";
-  var colors=[];
-  LENS[key].segs.forEach(function(sg){
-    for(var i=0;i<sg[1];i++)colors.push(sg[2]);
-    var k=document.createElement("span");k.className="k";
-    var sw=document.createElement("i");sw.style.background=sg[2];
-    k.appendChild(sw);k.appendChild(document.createTextNode(sg[0]+" "));
-    var b=document.createElement("b");b.textContent=sg[1];k.appendChild(b);
-    legHost.appendChild(k);
+  var segs=LENS[key].segs;
+  var mx=Math.max.apply(null,segs.map(function(sg){return sg[1];}))||1;
+  var ul=document.createElement("ul");ul.className="bars";
+  segs.forEach(function(sg){
+    var li=document.createElement("li");li.className="bar";
+    li.innerHTML='<span class="bn">'+sg[0]+'</span><span class="track"><span class="fill" style="width:'+(sg[1]/mx*100)+'%;background:'+sg[2]+'"></span></span><span class="bv">'+sg[1]+'%</span>';
+    ul.appendChild(li);
   });
-  colors.slice(0,100).forEach(function(c){isoHost.appendChild(person(c));});
+  isoHost.appendChild(ul);
   $("isocap").textContent=LENS[key].cap;
 }
 var tabBtns=document.querySelectorAll(".tabs button");
@@ -765,24 +739,37 @@ function layout(items,x,y,w,h,out){
   if(w>=h){var cw2=s/h,cy2=y;row.forEach(function(r){var rh=r.a/cw2;out.push({n:r.n,v:r.v,x:x,y:cy2,w:cw2,h:rh});cy2+=rh;});layout(rest,x+cw2,y,w-cw2,h,out);}
   else{var ch=s/w,cx2=x;row.forEach(function(r){var rw=r.a/ch;out.push({n:r.n,v:r.v,x:cx2,y:y,w:rw,h:ch});cx2+=rw;});layout(rest,x,y+ch,w,h-ch,out);}
 }
+var TMAP_PALETTE=["#8AA0AD","#C9A66B","#A87C9F","#6E9887","#B87D5C","#7D8CC4","#B5A155","#6FA0A8","#A0708A","#8FA85C"];
 function drawTreemap(data){
-  var TW=460,TH=420,tm=$("tmap");
-  tm.setAttribute("viewBox","0 0 "+TW+" "+TH);tm.innerHTML="";
+  var TW=460,TH=420,tm=$("tmap"),leg=$("tmapLeg");
+  tm.setAttribute("viewBox","0 0 "+TW+" "+TH);tm.innerHTML="";leg.innerHTML="";
   var total=data.reduce(function(s,d){return s+d[1];},0);
-  var items=data.map(function(d){return{n:d[0],v:d[1],a:d[1]/total*TW*TH};}).sort(function(a,b){return b.a-a.a;});
+  var items=data.map(function(d,i){return{n:d[0],v:d[1],a:d[1]/total*TW*TH};}).sort(function(a,b){return b.a-a.a;});
+  items.forEach(function(it,i){
+    it.color=it.n.indexOf("제과")===0?"var(--jade)":TMAP_PALETTE[i%TMAP_PALETTE.length];
+  });
   var rects=[];layout(items,0,0,TW,TH,rects);
   rects.forEach(function(r){
     var mine=r.n.indexOf("제과")===0;
-    tm.appendChild(el("rect",{x:r.x+2,y:r.y+2,width:Math.max(0,r.w-4),height:Math.max(0,r.h-4),fill:mine?"var(--jade)":"var(--surface-2)",stroke:mine?"var(--jade-deep)":"var(--line-2)","stroke-width":1}));
+    var item=items.filter(function(it){return it.n===r.n;})[0];
+    tm.appendChild(el("rect",{x:r.x+2,y:r.y+2,width:Math.max(0,r.w-4),height:Math.max(0,r.h-4),fill:item.color,stroke:mine?"var(--jade-deep)":"var(--line-2)","stroke-width":1,opacity:mine?1:.82}));
     if(r.w>90&&r.h>44){
-      var t1=el("text",{x:r.x+14,y:r.y+30,fill:mine?"#fff":"var(--ink-2)","font-family":"var(--sans)","font-size":16,"font-weight":600});
+      var t1=el("text",{x:r.x+14,y:r.y+30,fill:"#fff","font-family":"var(--sans)","font-size":16,"font-weight":600});
       t1.textContent=r.n;tm.appendChild(t1);
-      var t2=el("text",{x:r.x+14,y:r.y+52,fill:mine?"#fff":"var(--ink-3)","font-family":"var(--mono)","font-size":13});
+      var t2=el("text",{x:r.x+14,y:r.y+52,fill:"#fff","font-family":"var(--mono)","font-size":13});
       t2.textContent=r.v+"곳";tm.appendChild(t2);
     }else if(r.w>52&&r.h>26){
-      var t3=el("text",{x:r.x+8,y:r.y+20,fill:mine?"#fff":"var(--ink-3)","font-family":"var(--mono)","font-size":11});
+      var t3=el("text",{x:r.x+8,y:r.y+20,fill:"#fff","font-family":"var(--mono)","font-size":11});
       t3.textContent=r.n+" "+r.v;tm.appendChild(t3);
     }
+  });
+  /* 타일이 작아 라벨이 안 보이는 업종도 빠짐없이 목록으로 표시 */
+  items.forEach(function(it){
+    var k=document.createElement("span");k.className="k";
+    var sw=document.createElement("i");sw.style.background=it.color;
+    k.appendChild(sw);k.appendChild(document.createTextNode(it.n+" "));
+    var b=document.createElement("b");b.textContent=it.v+"곳";k.appendChild(b);
+    leg.appendChild(k);
   });
 }
 drawTreemap(IND_BASE);
@@ -928,25 +915,7 @@ function renderCity(cd){
     drawLens(curLens);
     $("isoTime").textContent=(p.PPLTN_TIME||"").slice(11,16)+" 기준";
     accumToday(p);
-    /* 예측 곡선 오버레이 */
-    var f=p.FCST_PPLTN||[],d="";
-    f.forEach(function(r){
-      var dt=new Date(r.FCST_TIME.replace(" ","T"));
-      var h=dt.getHours();if(h<H0)h+=24;
-      if(h<H0||h>H0+N-1)return;
-      var m2=((+r.FCST_PPLTN_MIN)+(+r.FCST_PPLTN_MAX))/2;
-      d+=(d?"L":"M")+cx(h)+" "+cy(Math.min(m2,YMAX));
-    });
-    fcstPath.setAttribute("d",d);
-    /* 현재 점 */
-    var nw=new Date(),nh=nw.getHours()+nw.getMinutes()/60;if(nh<H0)nh+=24;
-    if(nh>=H0&&nh<=H0+N-1){
-      var pm=(lastPop.mn+lastPop.mx)/2;
-      nowDot.setAttribute("cx",cx(nh));nowDot.setAttribute("cy",cy(Math.min(pm,YMAX)));
-      nowDot.setAttribute("visibility","visible");
-      nowLab.setAttribute("x",cx(nh)+9);nowLab.setAttribute("y",cy(Math.min(pm,YMAX))-9);
-      nowLab.textContent="지금";
-    }
+    updateDayCurve(p); /* 오늘 실측+예측 곡선 (121곳 공용) */
   }
   /* --- 소비 --- */
   var c=cd.LIVE_CMRCL_STTS;if(Array.isArray(c))c=c[0];
@@ -965,8 +934,10 @@ function renderCity(cd){
     rsb.forEach(function(r){
       var m3=((+r.RSB_SH_PAYMENT_AMT_MIN)+(+r.RSB_SH_PAYMENT_AMT_MAX))/2;
       var mine=(r.RSB_MID_CTGR||"").indexOf("제과")===0;
+      var txCnt=+r.RSB_SH_PAYMENT_CNT||0;
+      var perTx=txCnt?Math.round(m3/txCnt/1000)/10:null;
       var li=document.createElement("li");li.className="bar";
-      li.innerHTML='<span class="bn"'+(mine?' style="color:var(--jade-deep);font-weight:600"':'')+'>'+r.RSB_MID_CTGR+'</span><span class="track"><span class="fill'+(mine?' hi':'')+'" style="width:'+(m3/mxr*100)+'%"></span></span><span class="bv">'+Math.round(m3/10000)+'만원</span>';
+      li.innerHTML='<span class="bn"'+(mine?' style="color:var(--jade-deep);font-weight:600"':'')+'>'+r.RSB_MID_CTGR+'</span><span class="track"><span class="fill'+(mine?' hi':'')+'" style="width:'+(m3/mxr*100)+'%"></span></span><span class="bv">'+Math.round(m3/10000)+'만원</span><span class="bar-meta">'+(r.RSB_PAYMENT_LVL||"–")+' · 가맹점 '+(r.RSB_MCT_CNT||"–")+'곳 · 결제 '+txCnt+'건'+(perTx?' · 건당 평균 '+perTx+'만원':'')+'</span>';
       ih2.appendChild(li);
     });
     /* 트리맵도 라이브 가맹점 수로 */
@@ -1049,7 +1020,7 @@ function renderCity(cd){
     }
   }
   updateAdvice(p,c);
-  updateDigest(p,c,w,typeof rsb!=="undefined"?rsb:null);
+  updateDigest(p,c,w,typeof rsb!=="undefined"?rsb:null,cd.EVENT_STTS);
   updateTransport(cd.SUB_STTS,cd.BUS_STN_STTS,cd.LIVE_SUB_PPLTN,cd.LIVE_BUS_PPLTN,cd.ROAD_TRAFFIC_STTS);
   updateParking(cd.PRK_STTS);
   updateEvents(cd.EVENT_STTS);
@@ -1057,10 +1028,9 @@ function renderCity(cd){
 function updateTransport(subs,busStops,subPop,busPop,road){
   var sh=$("subList");sh.innerHTML="";
   if(subs&&subs.length){
-    subs.slice(0,4).forEach(function(s){
-      var next=(s.SUB_DETAIL||[])[0];
+    subs.slice(0,6).forEach(function(s){
       var li=document.createElement("li");
-      li.innerHTML='<span class="nm">'+s.SUB_STN_NM+' ('+s.SUB_STN_LINE+'호선)</span><span class="vv">'+(next?next.SUB_ARMG1:"정보 없음")+'</span>';
+      li.innerHTML='<span class="nm">'+s.SUB_STN_NM+'</span><span class="vv">'+s.SUB_STN_LINE+'호선</span>';
       sh.appendChild(li);
     });
     var sup=subPop?(" · 최근 10분 승차 "+subPop.SUB_10WTHN_GTON_PPLTN_MIN+"–"+subPop.SUB_10WTHN_GTON_PPLTN_MAX+"명"):"";
@@ -1085,25 +1055,28 @@ function updateParking(prk){
   top.forEach(function(p2){
     var li=document.createElement("li");
     var fee=p2.PAY_YN==="Y"?(p2.RATES+"원/"+p2.TIME_RATES+"분"):"무료";
-    li.innerHTML='<span class="nm">'+p2.PRK_NM+'</span><span class="vv">'+p2.CPCTY+'대 · '+fee+'</span>';
+    var q=encodeURIComponent(p2.PRK_NM+" 주차장 요금");
+    li.innerHTML='<span class="nm">'+p2.PRK_NM+'</span><span class="vv">'+p2.CPCTY+'대 · '+fee+' · <a href="https://search.naver.com/search.naver?query='+q+'" target="_blank" rel="noopener">최신 확인 →</a></span>';
     el2.appendChild(li);
   });
   var totalCap=prk.reduce(function(s,p2){return s+(+p2.CPCTY||0);},0);
-  $("prkCap").textContent="총 "+prk.length+"곳, "+totalCap+"대 수용 규모(실시간 잔여석은 이 데이터에 없어 표시하지 않습니다).";
+  $("prkCap").textContent="총 "+prk.length+"곳, "+totalCap+"대 수용 규모(서울시 등록 기준 요금·대수). 실시간 잔여석·최신 요금은 각 항목의 [최신 확인] 링크로 검색해 확인하세요.";
 }
 function updateEvents(events){
   var host=$("eventList");host.innerHTML="";
   if(!events||!events.length){
+    $("eventSub").textContent="오늘 진행 중인 행사 없음";
     host.innerHTML='<p class="eventempty">이 상권 반경에서 오늘 진행 중인 서울시 등록 문화행사가 없습니다.</p>';
     return;
   }
-  events.slice(0,4).forEach(function(ev){
+  $("eventSub").textContent="오늘 "+events.length+"건 진행 중";
+  events.slice(0,6).forEach(function(ev){
     var div=document.createElement("div");div.className="eventcard";
     div.innerHTML='<h3>'+ev.EVENT_NM+'</h3><p>'+(ev.EVENT_PLACE||"")+' · '+(ev.EVENT_PERIOD||"")+' · '+(ev.PAY_YN==="Y"?"유료":"무료")+'</p>'+(ev.URL?'<a href="'+ev.URL+'" target="_blank" rel="noopener">자세히 보기 →</a>':"");
     host.appendChild(div);
   });
 }
-function updateDigest(p,c,w,rsb){
+function updateDigest(p,c,w,rsb,events){
   if(!p&&!c)return;
   var parts=[];
   parts.push("<b>"+POI+"</b>는 지금 ");
@@ -1120,7 +1093,10 @@ function updateDigest(p,c,w,rsb){
   }
   if(w){
     var pr=w.PRECIPITATION&&w.PRECIPITATION!=="-"?w.PRECIPITATION:null;
-    parts.push(pr?("현재 비("+pr+")가 오고 있어 유동에 영향을 줄 수 있습니다.") : "현재 강수는 없습니다.");
+    parts.push(pr?("현재 비("+pr+")가 오고 있어 유동에 영향을 줄 수 있습니다. ") : "현재 강수는 없습니다. ");
+  }
+  if(events&&events.length){
+    parts.push("오늘 이 상권 반경에서 <b>"+events.length+"건의 문화행사</b>가 진행 중입니다(예: "+events[0].EVENT_NM+") — 유동인구가 평소보다 늘 수 있어요.");
   }
   $("digestText").innerHTML=parts.join("");
 }
@@ -1128,21 +1104,21 @@ function updateAdvice(p,c){
   if(p){
     var lvl=p.AREA_CONGEST_LVL||"–";
     var lvlMsg={
-      "여유":"손이 비는 시간대입니다. 신메뉴 테스트, 재고 정리, 청소 같은 작업을 지금 처리하기 좋습니다.",
-      "보통":"평소 패턴 범위입니다. 준비량은 유지하고 좌석 회전을 지켜보세요.",
-      "약간 붐빔":"평소보다 사람이 붙는 중입니다. 재료·인력 여유분을 한 번 점검하세요.",
-      "붐빔":"유동이 많은 시간대입니다. 회전과 대기 안내를 신경 써야 할 때입니다.",
-      "매우 붐빔":"정점 시간대입니다. 재료 소진과 대기열 관리를 최우선으로 두세요."
+      "여유":"손이 비는 시간대 — 신메뉴 테스트·재고 정리·청소하기 좋습니다.",
+      "보통":"평소 패턴 범위 — 준비량 유지, 좌석 회전만 지켜보세요.",
+      "약간 붐빔":"평소보다 사람이 붙는 중 — 재료·인력 여유분을 점검하세요.",
+      "붐빔":"유동이 많은 시간대 — 회전·대기 안내를 신경 쓰세요.",
+      "매우 붐빔":"정점 시간대 — 재료 소진·대기열 관리가 최우선입니다."
     };
-    $("advCongestH").textContent=POI+" 지금 혼잡도: "+lvl;
-    $("advCongestP").textContent=lvlMsg[lvl]||"실시간 혼잡도를 확인해 준비량을 조정하세요.";
-    $("advCongestW").textContent="근거 — 서울 열린데이터광장 실시간 혼잡도";
+    $("advCongestH").textContent="지금 할 일";
+    $("advCongestP").textContent=lvlMsg[lvl]||"실시간 혼잡도에 맞춰 준비량을 조정하세요.";
+    $("advCongestW").textContent=lvl;
     var nonres=+p.NON_RESNT_PPLTN_RATE||0;
-    $("advVisitH").textContent=Math.round(nonres)+"%가 외지 방문객입니다";
+    $("advVisitH").textContent="손님 대응 팁";
     $("advVisitP").textContent = nonres>=50
-      ? "거리 인구의 절반 이상이 이 동네에 살지 않는 방문객입니다. 처음 오는 손님 기준으로 안내문·간판을 점검해 보세요."
-      : "동네 상주 인구 비중이 더 큽니다. 단골 관리와 재방문 유도가 더 효과적일 수 있습니다.";
-    $("advVisitW").textContent="근거 — 비상주 인구 비율 실시간";
+      ? "외지 방문객이 더 많음 — 처음 오는 손님 기준으로 안내문·간판을 점검하세요."
+      : "동네 주민이 더 많음 — 단골 관리·재방문 유도가 효과적입니다.";
+    $("advVisitW").textContent="외지 방문객 "+Math.round(nonres)+"%";
   }
 }
 /* ---- 오늘 다녀간 사람: 인구 가중 누적 ---- */
@@ -1227,23 +1203,13 @@ $("refreshBtn").onclick=refresh;
 
 /* ================= 상권·매장 설정 ================= */
 function fillAreaSelect(){
-  var sel=$("areaSel");sel.innerHTML="";
-  var cats={};
-  AREA_LIST.forEach(function(a){(cats[a[1]]=cats[a[1]]||[]).push(a[0]);});
-  Object.keys(cats).forEach(function(c){
-    var og=document.createElement("optgroup");og.label=c;
-    cats[c].forEach(function(nm){
-      var op=document.createElement("option");op.value=nm;op.textContent=nm;
-      if(nm===POI)op.selected=true;
-      og.appendChild(op);
-    });
-    sel.appendChild(og);
+  var dl=$("areaOptions");dl.innerHTML="";
+  AREA_LIST.forEach(function(a){
+    var op=document.createElement("option");
+    op.value=a[0];op.label=a[1];
+    dl.appendChild(op);
   });
-}
-function applyCurveVisibility(){
-  var has=!!CURVE_AREAS[POI];
-  $("curveCard").hidden=!has;
-  $("curveFallback").hidden=has;
+  $("areaSearch").value=POI;
 }
 function renderStoreBrand(){
   $("storeName").textContent=POI;
@@ -1251,13 +1217,21 @@ function renderStoreBrand(){
   $("trendCap").innerHTML="내 프록시(Cloudflare Worker)가 브라우저를 안 열어도 10분마다 백그라운드로 수집합니다. 최대 7일치까지 서버(KV)와 이 브라우저에 이중 저장되며, 이후 오래된 기록부터 자동 삭제됩니다. 요일별 과거 기준선이 아니라 <b>실시간 관측 누적치</b>입니다.";
 }
 fillAreaSelect();
-applyCurveVisibility();
 renderStoreBrand();
 $("storeBtn").onclick=function(){
   $("storeSetup").hidden=!$("storeSetup").hidden;
+  if(!$("storeSetup").hidden)$("areaSearch").focus();
 };
 $("storeSave").onclick=function(){
-  var newArea=$("areaSel").value;
+  var typed=$("areaSearch").value.trim();
+  var match=AREA_LIST.filter(function(a){return a[0]===typed;})[0];
+  if(!match){
+    $("areaErr").hidden=false;
+    $("areaErr").textContent="목록에 있는 상권명을 정확히 선택해 주세요 (자동완성 목록에서 고르면 안전해요).";
+    return;
+  }
+  $("areaErr").hidden=true;
+  var newArea=match[0];
   if(newArea&&newArea!==POI){
     POI=newArea;lsSet("jw_area",POI);COMPARE=pickCompare(POI);
     lsSet("jw_hist",[]); /* 상권이 바뀌면 자가 급증 비교 이력 초기화 — 새 상권은 서버쪽 기록으로 다시 채워짐 */
@@ -1265,7 +1239,6 @@ $("storeSave").onclick=function(){
     var tstrip=$("todayAge");if(tstrip)tstrip.innerHTML="";
     var tleg=$("todayAgeLeg");if(tleg)tleg.innerHTML="";
     var tmeta=$("todayMeta");if(tmeta)tmeta.textContent="누적 관측 대기";
-    applyCurveVisibility();
     drawTrend([]);
     notifyAreaToServer(POI); /* 내 프록시가 이 상권을 백그라운드로 추적하도록 등록 */
   }
@@ -1273,16 +1246,6 @@ $("storeSave").onclick=function(){
   $("storeSetup").hidden=true;
   refresh();
 };
-
-/* 복사 */
-(function(){var saved=lsGet("jw_notice","");if(saved)$("copysrc").value=saved;})();
-$("copySave").addEventListener("click",function(){lsSet("jw_notice",$("copysrc").value);});
-$("copybtn").addEventListener("click",function(){
-  var txt=$("copysrc").value;
-  function done(){$("copymsg").style.opacity=1;setTimeout(function(){$("copymsg").style.opacity=0;},2200);}
-  function fb(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,fb);}else fb();
-});
 
 /* 페이지 탭 */
 var navBtns=document.querySelectorAll(".nav button");
