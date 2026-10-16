@@ -288,6 +288,15 @@
     x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
     x.drawImage(photo, 0, 0, photo.width, photo.height, 0, 0, W, fh);
     toneAdjust(x, 0, 0, W, fh, S.bright, S.contrast);
+    // fade the photo to white behind the logo (top) and the characters (bottom) so the art reads clearly
+    const g = x.createLinearGradient(0, 0, 0, fh);
+    g.addColorStop(0.00, "rgba(255,255,255,0.88)");
+    g.addColorStop(0.12, "rgba(255,255,255,0.80)");
+    g.addColorStop(0.22, "rgba(255,255,255,0)");
+    g.addColorStop(0.56, "rgba(255,255,255,0)");
+    g.addColorStop(0.74, "rgba(255,255,255,0.78)");
+    g.addColorStop(1.00, "rgba(255,255,255,0.90)");
+    x.fillStyle = g; x.fillRect(0, 0, W, fh);
     // paint the halo white, then lay the black lines on top
     const halo = haloMask(frameImgs[S.design], W, fh, Math.max(2, Math.round(W/170)));
     const id = x.getImageData(0, 0, W, fh), p = id.data;
