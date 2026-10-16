@@ -116,6 +116,7 @@
       <select id="s_mirror"><option value="1">거울처럼 (셀카 느낌)</option><option value="0">반전 없음</option></select></div>
     <div class="row"><label for="s_ratio">사진 비율</label>
       <select id="s_ratio"><option value="0.75">세로 3:4</option><option value="1">정사각 1:1</option><option value="1.333">가로 4:3</option></select></div>
+    <p class="sub" id="camInfo" style="margin:6px 0 0;font-size:13px"></p>
     <div class="row"><label for="s_countdown">카운트다운(초)</label><input id="s_countdown" type="number" min="0" max="10" step="1"></div>
 
     <div class="sec">사진 보정</div>
@@ -188,10 +189,18 @@
       video.srcObject = stream;
       await video.play().catch(()=>{});
       video.classList.toggle("mirror", S.mirror === "1");
-      layoutGuide();
+      layoutGuide(); camInfo();
     }catch(e){
       showStatus("카메라를 열 수 없습니다. 사파리 설정에서 카메라 권한을 허용해 주세요. (" + (e.name||e) + ")", "err", 0);
     }
+  }
+  function camInfo(){
+    const el = $("camInfo"); if (!el) return;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh){ setTimeout(camInfo, 500); return; }
+    const src = vw / vh, r = parseFloat(($("s_ratio") || {}).value || S.ratio);
+    const used = r < src ? r / src : src / r;
+    el.textContent = `카메라 원본 ${vw}×${vh} · 이 비율이면 화면의 ${Math.round(used*100)}%만 사용 (${r < src ? "좌우" : "위아래"} ${Math.round((1-used)*100)}% 잘림)`;
   }
   function layoutGuide(){
     const g = $("frameGuide");
@@ -746,7 +755,8 @@
   }
   $("s_bright").addEventListener("input", e => $("v_bright").textContent = e.target.value);
   $("s_contrast").addEventListener("input", e => $("v_contrast").textContent = Number(e.target.value).toFixed(2));
-  $("gear").addEventListener("click", () => { fillForm(); settingsEl.style.display = "flex"; });
+  $("gear").addEventListener("click", () => { fillForm(); camInfo(); settingsEl.style.display = "flex"; });
+  $("s_ratio").addEventListener("change", camInfo);
   $("b_save").addEventListener("click", () => {
     const cam = readForm(); settingsEl.style.display = "none";
     if (cam) startCamera();
