@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="영수증 포토">
+<title>영수증 포토</title>
+<style>
+  :root{
+    --bg:#0b0b0c; --fg:#f5f3ee; --muted:#9a968d; --accent:#e9e4d8;
+    --ok:#7fd49b; --err:#ff8a7a; --panel:#17171a; --line:#2a2a2e;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;overflow:hidden;
+    -webkit-user-select:none;user-select:none}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+  video{width:100%;height:100%;object-fit:cover}
+  video.mirror{transform:scaleX(-1)}
+  #frameGuide{position:absolute;border:2px solid rgba(255,255,255,.35);border-radius:6px;pointer-events:none}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+  #count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:min(40vw,40vh);font-weight:800;color:#fff;text-shadow:0 6px 40px rgba(0,0,0,.6);pointer-events:none}
+  #shoot{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    width:96px;height:96px;border-radius:50%;border:6px solid rgba(255,255,255,.9);background:rgba(255,255,255,.25);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  #shoot:active{background:rgba(255,255,255,.6)}
+  #gear{position:fixed;right:calc(16px + env(safe-area-inset-right));top:calc(16px + env(safe-area-inset-top));
+    width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;font-size:22px;opacity:.55}
+  #hint{position:fixed;left:0;right:0;top:calc(18px + env(safe-area-inset-top));text-align:center;
+    font-size:clamp(18px,2.6vw,26px);font-weight:600;color:rgba(255,255,255,.75);text-shadow:0 1px 8px rgba(0,0,0,.6);pointer-events:none}
+  #status{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    padding:10px 18px;border-radius:999px;background:rgba(0,0,0,.6);font-size:16px;display:none;white-space:nowrap}
+  #status.ok{color:var(--ok)} #status.err{color:var(--err);white-space:normal;max-width:90vw;text-align:center}
+  #result{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding-top:64px;padding-bottom:110px}
+  #result img{max-height:calc(100vh - 190px);max-width:70vw;background:#fff;box-shadow:0 10px 60px rgba(0,0,0,.6);image-rendering:pixelated}
+  #usbChip{position:fixed;left:calc(16px + env(safe-area-inset-left));top:calc(16px + env(safe-area-inset-top));
+    padding:8px 14px;border-radius:999px;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:14px;font-weight:600}
+  #usbChip.ok{color:var(--ok)} #usbChip.bad{color:var(--err);background:rgba(0,0,0,.7)}
+  #result .actions .btn{font-size:clamp(20px,2.8vw,28px);padding:18px 40px;min-width:160px;border-radius:16px}
+  #result .actions{gap:20px;position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));display:flex;gap:12px}
+  .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);
+    padding:12px 18px;border-radius:12px;font-size:16px;font-weight:600}
+  .btn.primary{background:var(--accent);color:#111;border-color:var(--accent)}
+  /* settings */
+  #settings{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;
+    -webkit-user-select:text;user-select:text}
+  #settings .panel{width:min(640px,94vw);max-height:90vh;overflow:auto;background:var(--panel);
+    border:1px solid var(--line);border-radius:18px;padding:22px}
+  #settings h2{margin:0 0 4px;font-size:20px}
+  #settings p.sub{margin:0 0 18px;color:var(--muted);font-size:14px}
+  .row{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;margin:10px 0}
+  .row label{font-size:14px;color:var(--muted)}
+  .row input[type=text],.row input[type=number],.row select,.row textarea{
+    width:100%;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:#0f0f11;color:var(--fg)}
+  .row textarea{min-height:64px;resize:vertical;font-family:inherit}
+  .row input[type=range]{width:100%}
+  .sec{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;font-weight:700;
+    letter-spacing:.06em;color:var(--muted)}
+  .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .note{font-size:13px;color:var(--muted);line-height:1.55;margin-top:12px}
+  @media (max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" autoplay muted playsinline></video>
+  <div id="frameGuide"></div>
+</div>
+<div id="hint">화면을 터치하면 5초 뒤 촬영됩니다</div>
+<button id="usbChip" type="button" hidden>프린터 연결</button>
+<div id="flash"></div>
+<div id="count"></div>
+<div id="status"></div>
+<button id="shoot" aria-label="촬영"></button>
+<button id="gear" aria-label="설정">⚙︎</button>
+
+<div id="result">
+  <img id="resultImg" alt="출력 미리보기">
+  <div class="actions" id="resultActions"></div>
+</div>
+
+<div id="settings">
+  <div class="panel">
+    <h2>설정</h2>
+    <p class="sub">이 아이패드에만 저장됩니다.</p>
+
+    <div class="sec">프린터</div>
+    <div class="row"><label for="s_conn">연결 방식</label>
+      <select id="s_conn"><option value="usb">USB 직결 (안드로이드 크롬)</option><option value="net">와이파이 / 랜 (엡손 ePOS)</option></select></div>
+    <div class="row" id="usbRow"><label>USB 프린터</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="b_usb" type="button">프린터 연결</button><span id="usbState" style="color:var(--muted);font-size:14px">연결 안 됨</span></div></div>
+    <div class="row"><label for="s_flow">출력 방식</label>
+      <select id="s_flow"><option value="confirm">확인 후 출력 (출력 / 다시 찍기)</option><option value="auto">찍으면 바로 출력</option></select></div>
+    <div class="row"><label for="s_ip">프린터 IP<br><small style="color:var(--muted)">와이파이 방식일 때만</small></label><input id="s_ip" type="text" inputmode="decimal" placeholder="예: 192.168.0.50"></div>
+    <div class="row"><label for="s_https">연결 방식</label>
+      <select id="s_https"><option value="1">HTTPS (와이파이 방식)</option><option value="0">HTTP</option></select></div>
+    <div class="row"><label for="s_width">출력 폭</label>
+      <select id="s_width">
+        <option value="512">512 dot — 80mm (TM-T88 계열, 기본)</option>
+        <option value="576">576 dot — 80mm (TM-T20 · TM-m30 계열)</option>
+        <option value="384">384 dot — 58mm</option>
+      </select></div>
+    <div class="row"><label for="s_copies">출력 매수</label><input id="s_copies" type="number" min="1" max="3" step="1"></div>
+    <div class="row"><label for="s_test">테스트 모드</label>
+      <select id="s_test"><option value="0">끄기 (실제 출력)</option><option value="1">켜기 (출력 없이 미리보기만)</option></select></div>
+
+    <div class="sec">촬영</div>
+    <div class="row"><label for="s_facing">카메라</label>
+      <select id="s_facing"><option value="user">전면 (셀카)</option><option value="environment">후면</option></select></div>
+    <div class="row"><label for="s_mirror">좌우 반전</label>
+      <select id="s_mirror"><option value="1">거울처럼 (셀카 느낌)</option><option value="0">반전 없음</option></select></div>
+    <div class="row"><label for="s_ratio">사진 비율</label>
+      <select id="s_ratio"><option value="0.75">세로 3:4</option><option value="1">정사각 1:1</option><option value="1.333">가로 4:3</option></select></div>
+    <div class="row"><label for="s_countdown">카운트다운(초)</label><input id="s_countdown" type="number" min="0" max="10" step="1"></div>
+
+    <div class="sec">사진 보정</div>
+    <div class="row"><label for="s_bright">밝기 <span id="v_bright"></span></label><input id="s_bright" type="range" min="-60" max="60" step="1"></div>
+    <div class="row"><label for="s_contrast">대비 <span id="v_contrast"></span></label><input id="s_contrast" type="range" min="0.6" max="2" step="0.05"></div>
+    <div class="row"><label for="s_dither">점묘 방식</label>
+      <select id="s_dither"><option value="atkinson">Atkinson (선명·레트로, 추천)</option><option value="floyd">Floyd–Steinberg (부드러움)</option><option value="threshold">흑백 2단 (강렬)</option></select></div>
+
+    <div class="sec">문구</div>
+    <div class="row"><label for="s_title">상단 문구</label><input id="s_title" type="text"></div>
+    <div class="row"><label for="s_footer">하단 문구</label><textarea id="s_footer"></textarea></div>
+    <div class="row"><label for="s_showDate">날짜·번호</label>
+      <select id="s_showDate"><option value="1">표시</option><option value="0">숨김</option></select></div>
+
+    <div class="btns">
+      <button class="btn primary" id="b_save">저장하고 닫기</button>
+      <button class="btn" id="b_test">테스트 출력</button>
+      <button class="btn" id="b_cert">프린터 인증서 허용</button>
+      <button class="btn" id="b_reset">번호 초기화</button>
+    </div>
+    <p class="note">
+      · <b>USB 직결</b>: 안드로이드 크롬에서만 됩니다. 처음 한 번 <b>프린터 연결</b>을 눌러 목록에서 엡손 프린터를 고르고, 이어서 뜨는 안드로이드 허용 창에서 "허용"을 누르세요.<br>
+      · 와이파이 방식은 처음 한 번 <b>프린터 인증서 허용</b>으로 프린터 화면 방문을 허용해야 합니다.<br>
+      · 촬영: 화면 아무 곳이나 터치 → 카운트다운 후 촬영 → 미리보기에서 <b>출력</b> 또는 <b>다시 찍기</b>.<br>
+      · 아이패드와 프린터는 같은 공유기(네트워크)에 연결돼 있어야 합니다.
+    </p>
+  </div>
+</div>
+
+<canvas id="work" hidden></canvas>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- settings ----------
+  const DEFAULTS = {
+    conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
+    facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
+    bright: 15, contrast: 1.2, dither: "atkinson",
+    title: "JADE & WATER  SEONGSU",
+    footer: "오늘의 한 장\nthank you for visiting",
+    showDate: "1"
+  };
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+  let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
+
+  const $ = id => document.getElementById(id);
+  const video = $("video"), work = $("work");
+  const statusEl = $("status"), countEl = $("count"), flashEl = $("flash");
+  const resultEl = $("result"), resultImg = $("resultImg"), resultActions = $("resultActions");
+  const settingsEl = $("settings");
+
+  // ---------- camera ----------
+  let stream = null;
+  async function startCamera(){
+    try{
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio:false,
+        video:{ facingMode:S.facing, width:{ideal:1920}, height:{ideal:1440} }
+      });
+      video.srcObject = stream;
+      await video.play().catch(()=>{});
+      video.classList.toggle("mirror", S.mirror === "1");
+      layoutGuide();
+    }catch(e){
+      showStatus("카메라를 열 수 없습니다. 사파리 설정에서 카메라 권한을 허용해 주세요. (" + (e.name||e) + ")", "err", 0);
+    }
+  }
+  function layoutGuide(){
+    const g = $("frameGuide");
+    const vw = innerWidth, vh = innerHeight, r = parseFloat(S.ratio); // r = w/h
+    let h = vh * 0.78, w = h * r;
+    if (w > vw * 0.9){ w = vw * 0.9; h = w / r; }
+    g.style.width = w + "px"; g.style.height = h + "px";
+  }
+  addEventListener("resize", layoutGuide);
+
+  // keep screen awake
+  let wakeLock = null;
+  async function keepAwake(){
+    try{ if ("wakeLock" in navigator && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ keepAwake(); if (!stream || !stream.active) startCamera(); } });
+
+  // ---------- status ----------
+  let statusTimer = null;
+  function showStatus(msg, cls, ms = 2500){
+    statusEl.textContent = msg; statusEl.className = cls || ""; statusEl.style.display = "block";
+    clearTimeout(statusTimer);
+    if (ms) statusTimer = setTimeout(() => statusEl.style.display = "none", ms);
+  }
+
+  // ---------- capture ----------
+  function grabFrame(){
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) throw new Error("카메라 준비 중");
+    const r = parseFloat(S.ratio);
+    let cw = vw, ch = vw / r;
+    if (ch > vh){ ch = vh; cw = vh * r; }
+    const sx = (vw - cw) / 2, sy = (vh - ch) / 2;
+    const c = document.createElement("canvas");
+    c.width = Math.round(cw); c.height = Math.round(ch);
+    const x = c.getContext("2d");
+    if (S.mirror === "1"){ x.translate(c.width, 0); x.scale(-1, 1); }
+    x.drawImage(video, sx, sy, cw, ch, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  // ---------- receipt composition ----------
+  const FONT = '-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif';
+  function pad2(n){ return String(n).padStart(2, "0"); }
+
+  function compose(photo, serial){
+    const W = parseInt(S.width, 10);
+    const pad = Math.round(W * 0.05);
+    const titleSize = Math.round(W * 0.062);
+    const metaSize = Math.round(W * 0.032);
+    const footSize = Math.round(W * 0.04);
+    const photoH = Math.round(W / parseFloat(S.ratio));
+    const footLines = String(S.footer || "").split("\n").filter(s => s.trim() !== "");
+    const showMeta = S.showDate === "1";
+
+    let H = pad;
+    if (S.title) H += titleSize * 1.5;
+    if (showMeta) H += metaSize * 1.8;
+    H += 14;                              // dashed rule
+    H += photoH + 16;
+    H += footLines.length * footSize * 1.45;
+    H += 14 + pad;
+    H = Math.round(H);
+
+    const c = work; c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
+    x.fillStyle = "#000"; x.textAlign = "center"; x.textBaseline = "top";
+
+    let y = pad;
+    if (S.title){
+      x.font = `800 ${titleSize}px ${FONT}`;
+      fitText(x, S.title, W / 2, y, W - pad * 2);
+      y += titleSize * 1.5;
+    }
+    if (showMeta){
+      const d = new Date();
+      const stamp = `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())}  ${pad2(d.getHours())}:${pad2(d.getMinutes())}   No.${String(serial).padStart(4,"0")}`;
+      x.font = `600 ${metaSize}px ${FONT}`;
+      x.fillText(stamp, W / 2, y);
+      y += metaSize * 1.8;
+    }
+    dashed(x, pad, W - pad, Math.round(y + 4)); y += 14;
+
+    // photo: draw, then tone-adjust only its region
+    x.drawImage(photo, 0, 0, photo.width, photo.height, 0, Math.round(y), W, photoH);
+    const py = Math.round(y);
+    toneAdjust(x, 0, py, W, photoH, S.bright, S.contrast);
+    y += photoH + 16;
+
+    if (footLines.length){
+      x.font = `600 ${footSize}px ${FONT}`;
+      for (const line of footLines){ fitText(x, line, W / 2, y, W - pad * 2); y += footSize * 1.45; }
+    }
+    dashed(x, pad, W - pad, Math.round(y + 4));
+
+    // whole receipt -> 1-bit
+    const img = x.getImageData(0, 0, W, H);
+    const bw = ditherToMono(img.data, W, H, S.dither);
+    // write the mono result back so the preview equals the print
+    for (let i = 0; i < W * H; i++){
+      const v = bw[i] ? 0 : 255, j = i * 4;
+      img.data[j] = img.data[j+1] = img.data[j+2] = v; img.data[j+3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    return { width: W, height: H, mono: bw, dataURL: c.toDataURL("image/png") };
+  }
+
+  function fitText(x, text, cx, y, maxW){
+    const w = x.measureText(text).width;
+    if (w <= maxW){ x.fillText(text, cx, y); return; }
+    x.save(); x.translate(cx, y); x.scale(maxW / w, 1); x.fillText(text, 0, 0); x.restore();
+  }
+  function dashed(x, x0, x1, y){
+    x.save(); x.strokeStyle = "#000"; x.lineWidth = 2; x.setLineDash([8, 6]);
+    x.beginPath(); x.moveTo(x0, y); x.lineTo(x1, y); x.stroke(); x.restore();
+  }
+  function toneAdjust(x, sx, sy, w, h, bright, contrast){
+    const d = x.getImageData(sx, sy, w, h), p = d.data;
+    for (let i = 0; i < p.length; i += 4){
+      let g = 0.299 * p[i] + 0.587 * p[i+1] + 0.114 * p[i+2];
+      g = (g - 128) * contrast + 128 + bright;
+      g = g < 0 ? 0 : g > 255 ? 255 : g;
+      p[i] = p[i+1] = p[i+2] = g;
+    }
+    x.putImageData(d, sx, sy);
+  }
+
+  // returns Uint8Array, 1 = black dot
+  function ditherToMono(rgba, W, H, mode){
+    const n = W * H, g = new Float32Array(n), out = new Uint8Array(n);
+    for (let i = 0, j = 0; i < n; i++, j += 4)
+      g[i] = 0.299 * rgba[j] + 0.587 * rgba[j+1] + 0.114 * rgba[j+2];
+    if (mode === "threshold"){
+      for (let i = 0; i < n; i++) out[i] = g[i] < 128 ? 1 : 0;
+      return out;
+    }
+    const kernel = mode === "floyd"
+      ? [[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]]
+      : [[1,0,1/8],[2,0,1/8],[-1,1,1/8],[0,1,1/8],[1,1,1/8],[0,2,1/8]];
+    for (let y = 0; y < H; y++){
+      for (let x = 0; x < W; x++){
+        const i = y * W + x, old = g[i], nv = old < 128 ? 0 : 255;
+        out[i] = nv === 0 ? 1 : 0;
+        const err = old - nv;
+        if (err === 0) continue;
+        for (const [dx, dy, f] of kernel){
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || xx >= W || yy >= H) continue;
+          g[yy * W + xx] += err * f;
+        }
+      }
+    }
+    return out;
+  }
+
+  // pack 1-bit rows (MSB first) and base64-encode
+  function packBase64(mono, W, H){
+    const rb = Math.ceil(W / 8), bytes = new Uint8Array(rb * H);
+    for (let y = 0; y < H; y++){
+      for (let x = 0; x < W; x++){
+        if (mono[y * W + x]) bytes[y * rb + (x >> 3)] |= (0x80 >> (x & 7));
+      }
+    }
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+
+  // ---------- Epson ePOS-Print (XML over HTTP/S) ----------
+  async function eposPrint(r){
+    if (!S.ip) throw new Error("설정에서 프린터 IP를 입력해 주세요");
+    const proto = S.https === "1" ? "https" : "http";
+    const url = `${proto}://${S.ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=20000`;
+    const b64 = packBase64(r.mono, r.width, r.height);
+    let body = "";
+    const copies = Math.max(1, Math.min(3, parseInt(S.copies, 10) || 1));
+    for (let k = 0; k < copies; k++){
+      body += `<image width="${r.width}" height="${r.height}" color="color_1" mode="mono">${b64}</image>`
+            + `<feed line="2"/><cut type="feed"/>`;
+    }
+    const xml = `<?xml version="1.0" encoding="utf-8"?>`
+      + `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>`
+      + `<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">${body}</epos-print>`
+      + `</s:Body></s:Envelope>`;
+
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 25000);
+    let res, txt;
+    try{
+      res = await fetch(url, {
+        method: "POST", body: xml, signal: ctrl.signal,
+        headers: { "Content-Type": "text/xml; charset=utf-8",
+                   "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT",
+                   "SOAPAction": '""' }
+      });
+      txt = await res.text();
+    }catch(e){
+      throw new Error(e.name === "AbortError"
+        ? "프린터 응답 없음 (시간 초과)"
+        : "프린터에 연결할 수 없습니다. IP, 같은 와이파이인지, 인증서 허용 여부를 확인하세요");
+    }finally{ clearTimeout(to); }
+    if (/success="true"/.test(txt)) return true;
+    const code = (txt.match(/code="([^"]*)"/) || [])[1] || ("HTTP " + res.status);
+    throw new Error("출력 실패: " + explain(code));
+  }
+  function explain(code){
+    const m = {
+      EPTR_COVER_OPEN: "프린터 덮개가 열려 있습니다",
+      EPTR_REC_EMPTY: "용지가 없습니다",
+      EPTR_AUTOCUTTER: "커터 오류",
+      EPTR_MECHANICAL: "기계 오류",
+      EX_TIMEOUT: "프린터 시간 초과",
+      EX_BADPORT: "프린터 연결 포트 오류",
+      ERROR_PARAMETER: "출력 데이터 오류 (출력 폭 설정 확인)",
+      SchemaError: "출력 데이터 오류",
+      DeviceNotFound: "프린터 장치 ID 오류",
+      PrintSystemError: "프린터 시스템 오류"
+    };
+    return m[code] || code;
+  }
+
+  // ---------- USB direct (WebUSB + ESC/POS raster) ----------
+  const EPSON_VID = 0x04b8;
+  const usb = { dev:null, ep:null, iface:null, busy:false };
+  const chip = $("usbChip");
+
+  function usbStatus(text, cls){
+    $("usbState").textContent = text;
+    chip.textContent = text; chip.className = cls || "";
+    chip.hidden = S.conn !== "usb" || cls === "ok";
+  }
+  async function usbOpen(dev){
+    await dev.open();
+    if (dev.configuration === null) await dev.selectConfiguration(1);
+    let pick = null;
+    for (const itf of dev.configuration.interfaces){
+      for (const alt of itf.alternates){
+        const out = alt.endpoints.find(e => e.direction === "out" && e.type === "bulk");
+        if (out && (!pick || alt.interfaceClass === 7)) pick = { itf: itf.interfaceNumber, alt: alt.alternateSetting, ep: out.endpointNumber };
+      }
+    }
+    if (!pick) throw new Error("이 기기에서 출력 통로를 찾지 못했습니다");
+    await dev.claimInterface(pick.itf);
+    if (pick.alt) await dev.selectAlternateInterface(pick.itf, pick.alt);
+    usb.dev = dev; usb.ep = pick.ep; usb.iface = pick.itf;
+    usbStatus("프린터 연결됨 · " + (dev.productName || "USB 프린터"), "ok");
+  }
+  async function usbAuto(){
+    if (!("usb" in navigator)) { usbStatus("이 브라우저는 USB 직결을 지원하지 않습니다 (안드로이드 크롬 필요)", "bad"); return; }
+    try{
+      const list = await navigator.usb.getDevices();
+      const dev = list.find(d => d.vendorId === EPSON_VID) || list[0];
+      if (dev) { await usbOpen(dev); return; }
+    }catch(e){}
+    usbStatus("프린터 연결", "bad");
+  }
+  async function usbPick(){
+    if (!("usb" in navigator)) { showStatus("USB 직결은 안드로이드 크롬에서만 됩니다", "err", 5000); return; }
+    try{
+      const dev = await navigator.usb.requestDevice({ filters:[{vendorId:EPSON_VID},{classCode:7}] });
+      await usbOpen(dev);
+      showStatus("프린터 연결됨 ✓", "ok");
+    }catch(e){
+      if (e && e.name === "NotFoundError") return;   // user closed the chooser
+      usbStatus("연결 실패: " + (e.message || e.name), "bad");
+      showStatus("연결 실패. 케이블과 프린터 전원을 확인하세요", "err", 5000);
+    }
+  }
+  if ("usb" in navigator){
+    navigator.usb.addEventListener("connect", () => { if (!usb.dev) usbAuto(); });
+    navigator.usb.addEventListener("disconnect", e => { if (e.device === usb.dev){ usb.dev = null; usbStatus("프린터 연결 끊김", "bad"); } });
+  }
+
+  // ESC @ init, GS v 0 raster in bands, feed, cut
+  function escposBytes(r){
+    const W = r.width, H = r.height, rb = Math.ceil(W / 8), BAND = 240;
+    const copies = Math.max(1, Math.min(3, parseInt(S.copies, 10) || 1));
+    const parts = [];
+    for (let k = 0; k < copies; k++){
+      parts.push(Uint8Array.of(0x1b, 0x40, 0x1b, 0x61, 0x01));            // init, centre
+      for (let y0 = 0; y0 < H; y0 += BAND){
+        const h = Math.min(BAND, H - y0);
+        const band = new Uint8Array(8 + rb * h);
+        band.set([0x1d, 0x76, 0x30, 0x00, rb & 255, rb >> 8, h & 255, h >> 8]);
+        for (let y = 0; y < h; y++){
+          const row = (y0 + y) * W, off = 8 + y * rb;
+          for (let x = 0; x < W; x++) if (r.mono[row + x]) band[off + (x >> 3)] |= (0x80 >> (x & 7));
+        }
+        parts.push(band);
+      }
+      parts.push(Uint8Array.of(0x1b, 0x64, 0x03, 0x1d, 0x56, 0x42, 0x00)); // feed 3 lines, feed+partial cut
+    }
+    let n = 0; for (const p of parts) n += p.length;
+    const out = new Uint8Array(n); let o = 0;
+    for (const p of parts){ out.set(p, o); o += p.length; }
+    return out;
+  }
+  async function usbPrint(r){
+    if (!usb.dev) await usbAuto();
+    if (!usb.dev) throw new Error("프린터가 연결되지 않았습니다. 왼쪽 위 '프린터 연결'을 누르세요");
+    const data = escposBytes(r), CH = 16384;
+    try{
+      for (let i = 0; i < data.length; i += CH){
+        const res = await usb.dev.transferOut(usb.ep, data.subarray(i, i + CH));
+        if (res.status !== "ok") throw new Error(res.status);
+      }
+    }catch(e){
+      usb.dev = null; usbStatus("프린터 연결 끊김", "bad");
+      throw new Error("출력 실패: 프린터 연결을 확인하세요 (" + (e.message || e.name) + ")");
+    }
+  }
+  async function printReceipt(r){
+    if (S.conn === "usb") return usbPrint(r);
+    return eposPrint(r);
+  }
+
+  // ---------- flow ----------
+  let busy = false;
+  let pending = null;          // composed receipt waiting for "출력" in confirm mode
+  let pendingTimer = null;
+
+  async function shoot(){
+    const n = Math.max(0, parseInt(S.countdown, 10) || 0);
+    $("hint").textContent = "카메라를 보세요";
+    for (let i = n; i > 0; i--){ countEl.textContent = i; await sleep(1000); }
+    countEl.textContent = "";
+    flashEl.style.opacity = "1"; setTimeout(() => flashEl.style.opacity = "0", 120);
+    const photo = grabFrame();
+    const serial = store.get("rc_serial", 0) + 1;
+    return { r: compose(photo, serial), serial };
+  }
+  async function doPrint(r, serial){
+    if (S.test === "1"){ showStatus("테스트 모드 · 출력하지 않음", "ok"); return; }
+    showStatus("출력 중…", "", 0);
+    await printReceipt(r);
+    store.set("rc_serial", serial);
+    showStatus("출력 완료 ✓ 영수증을 가져가세요", "ok", 4000);
+  }
+  function clearPending(){ pending = null; clearTimeout(pendingTimer); hideResult(); $("hint").textContent = `화면을 터치하면 ${Math.max(0, parseInt(S.countdown,10)||0)}초 뒤 촬영됩니다`; }
+
+  // primary = 촬영, or 출력 when a preview is waiting
+  async function trigger(){
+    if (busy || settingsEl.style.display === "flex") return;
+    busy = true;
+    try{
+      if (pending){
+        const p = pending; clearPending();
+        await doPrint(p.r, p.serial);
+        return;
+      }
+      const shot = await shoot();
+      if (S.flow === "confirm"){
+        pending = shot;
+        showResult(shot.r.dataURL, true);
+        $("hint").textContent = "마음에 들면 출력, 아니면 다시 찍기를 누르세요";
+        pendingTimer = setTimeout(clearPending, 30000);
+      }else{
+        showResult(shot.r.dataURL, false);
+        await doPrint(shot.r, shot.serial);
+        await sleep(3500);
+        hideResult();
+      }
+    }catch(e){
+      showStatus(e.message || String(e), "err", 6000);
+      await sleep(1200);
+    }finally{
+      countEl.textContent = ""; busy = false;
+    }
+  }
+  // secondary = 다시 찍기
+  async function retake(){
+    if (busy) return;
+    if (pending){ clearPending(); await trigger(); }
+  }
+
+  function showResult(url, confirm){
+    resultImg.src = url; resultActions.innerHTML = "";
+    if (confirm){
+      const again = document.createElement("button"); again.className = "btn"; again.textContent = "다시 찍기";
+      again.addEventListener("click", retake);
+      const go = document.createElement("button"); go.className = "btn primary"; go.textContent = "출력";
+      go.addEventListener("click", trigger);
+      resultActions.append(again, go);
+    }
+    if (S.test === "1" && !confirm){
+      const a = document.createElement("a");
+      a.href = url; a.download = "receipt.png"; a.className = "btn"; a.textContent = "이미지 저장";
+      resultActions.appendChild(a);
+    }
+    resultEl.style.display = "flex";
+  }
+  function hideResult(){ resultEl.style.display = "none"; }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // on-screen button
+  $("shoot").addEventListener("click", e => { e.stopPropagation(); trigger(); });
+  $("stage").addEventListener("click", () => { if (!pending) trigger(); });
+  resultEl.addEventListener("click", e => { if (e.target === resultEl && !pending) hideResult(); });
+
+  // physical button: keyboard-type Bluetooth/USB buttons, presenters, foot pedals
+  const TRIGGER_KEYS = new Set([" ", "Spacebar", "Enter", "NumpadEnter", "PageDown", "ArrowRight", "ArrowDown",
+    "MediaPlayPause", "MediaTrackNext", "AudioVolumeUp", "AudioVolumeDown", "b", "B"]);
+  const RETAKE_KEYS = new Set(["PageUp", "ArrowLeft", "ArrowUp", "Backspace", "Escape", "MediaTrackPrevious"]);
+  document.addEventListener("keydown", e => {
+    if (settingsEl.style.display === "flex") return;
+    if (RETAKE_KEYS.has(e.key)){ e.preventDefault(); if (!e.repeat) retake(); return; }
+    if (TRIGGER_KEYS.has(e.key) || e.code === "Space"){
+      e.preventDefault();
+      if (!e.repeat) trigger();
+    }
+  });
+
+  // ---------- settings UI ----------
+  const fields = ["conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","dither","title","footer","showDate"];
+  function fillForm(){
+    for (const f of fields) $("s_" + f).value = S[f];
+    $("v_bright").textContent = S.bright; $("v_contrast").textContent = Number(S.contrast).toFixed(2);
+  }
+  function readForm(){
+    const prevFacing = S.facing;
+    for (const f of fields) S[f] = $("s_" + f).value;
+    S.ip = String(S.ip).trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    S.copies = parseInt(S.copies, 10) || 1;
+    if (usb.dev) usbStatus($("usbState").textContent, "ok"); else usbStatus("프린터 연결", "bad");
+    S.countdown = parseInt(S.countdown, 10) || 0;
+    S.bright = parseInt(S.bright, 10) || 0;
+    S.contrast = parseFloat(S.contrast) || 1;
+    store.set("rc_settings", S);
+    video.classList.toggle("mirror", S.mirror === "1");
+    layoutGuide();
+    return prevFacing !== S.facing;
+  }
+  $("s_bright").addEventListener("input", e => $("v_bright").textContent = e.target.value);
+  $("s_contrast").addEventListener("input", e => $("v_contrast").textContent = Number(e.target.value).toFixed(2));
+  $("gear").addEventListener("click", () => { fillForm(); settingsEl.style.display = "flex"; });
+  $("b_save").addEventListener("click", () => {
+    const cam = readForm(); settingsEl.style.display = "none";
+    if (cam) startCamera();
+    showStatus("저장됨", "ok");
+  });
+  $("b_test").addEventListener("click", async () => {
+    readForm();
+    try{
+      const photo = grabFrame();
+      const r = compose(photo, store.get("rc_serial", 0));
+      if (S.test === "1"){ settingsEl.style.display = "none"; showResult(r.dataURL, false); showStatus("테스트 모드 · 미리보기만", "ok"); return; }
+      showStatus("테스트 출력 중…", "", 0);
+      await printReceipt(r);
+      showStatus("테스트 출력 완료 ✓", "ok");
+    }catch(e){ showStatus(e.message || String(e), "err", 6000); }
+  });
+  $("b_cert").addEventListener("click", () => {
+    readForm();
+    if (!S.ip){ showStatus("먼저 프린터 IP를 입력하세요", "err"); return; }
+    window.open("https://" + S.ip + "/", "_blank");
+  });
+  $("b_usb").addEventListener("click", usbPick);
+  chip.addEventListener("click", usbPick);
+  $("b_reset").addEventListener("click", () => { store.set("rc_serial", 0); showStatus("번호를 0으로 초기화했습니다", "ok"); });
+  settingsEl.addEventListener("click", e => { if (e.target === settingsEl) settingsEl.style.display = "none"; });
+
+  // ---------- boot ----------
+  startCamera();
+  keepAwake();
+  if (S.conn === "usb") usbAuto(); else chip.hidden = true;
+  if (S.conn === "net" && !S.ip){ setTimeout(() => { fillForm(); settingsEl.style.display = "flex"; }, 600); }
+  // expose pure functions for testing
+  window.__rc = { ditherToMono, packBase64, escposBytes };
+})();
+</script>
+</body>
+</html>
