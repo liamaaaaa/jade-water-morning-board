@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="영수증 포토">
@@ -210,6 +213,18 @@
     g.style.width = w + "px"; g.style.height = h + "px";
   }
   addEventListener("resize", layoutGuide);
+
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+  // go fullscreen on the first touch (browsers only allow it after a user gesture)
+  function goFullscreen(){
+    const el = document.documentElement;
+    if (document.fullscreenElement || !el.requestFullscreen) return;
+    el.requestFullscreen({ navigationUI:"hide" }).then(() => {
+      try{ screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(()=>{}); }catch(e){}
+    }).catch(()=>{});
+  }
+  addEventListener("pointerdown", goFullscreen, { capture:true });
+  addEventListener("keydown", goFullscreen, { capture:true });
 
   // keep screen awake
   let wakeLock = null;
