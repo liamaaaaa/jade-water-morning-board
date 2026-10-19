@@ -129,6 +129,9 @@
     <div class="sec">사진 보정</div>
     <div class="row"><label for="s_bright">밝기 <span id="v_bright"></span></label><input id="s_bright" type="range" min="-60" max="60" step="1"></div>
     <div class="row"><label for="s_contrast">대비 <span id="v_contrast"></span></label><input id="s_contrast" type="range" min="0.6" max="2" step="0.05"></div>
+    <div class="row"><label for="s_gamma">중간톤 밝게 <span id="v_gamma"></span></label><input id="s_gamma" type="range" min="1" max="2.4" step="0.05"></div>
+    <div class="row"><label for="s_autoLevel">자동 밝기 맞춤</label>
+      <select id="s_autoLevel"><option value="1">켜기 (추천)</option><option value="0">끄기</option></select></div>
     <div class="row"><label for="s_dither">점묘 방식</label>
       <select id="s_dither"><option value="atkinson">Atkinson (선명·레트로, 추천)</option><option value="floyd">Floyd–Steinberg (부드러움)</option><option value="threshold">흑백 2단 (강렬)</option></select></div>
 
@@ -147,6 +150,7 @@
       <button class="btn" id="b_cert">프린터 인증서 허용</button>
       <button class="btn" id="b_reset">번호 초기화</button>
       <button class="btn" id="b_install">바탕화면에 아이콘 설치</button>
+      <button class="btn" id="b_tone">화질 기본값으로</button>
     </div>
     <p class="note">
       · <b>USB 직결</b>: 안드로이드 크롬에서만 됩니다. 처음 한 번 <b>프린터 연결</b>을 눌러 목록에서 엡손 프린터를 고르고, 이어서 뜨는 안드로이드 허용 창에서 "허용"을 누르세요.<br>
@@ -167,7 +171,7 @@
   const DEFAULTS = {
     conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
     facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
-    bright: 15, contrast: 1.2, dither: "atkinson",
+    bright: 10, contrast: 1.1, dither: "atkinson", autoLevel: "1", gamma: 1.5, toneVer: 2,
     design: "halloween",
     title: "JADE & WATER  SEONGSU",
     footer: "오늘의 한 장\nthank you for visiting",
@@ -178,6 +182,9 @@
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
   let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
+  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","dither"];
+  function resetTone(){ for (const k of TONE_KEYS) S[k] = DEFAULTS[k]; S.toneVer = DEFAULTS.toneVer; store.set("rc_settings", S); }
+  if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();      // apply the new tuned picture defaults once
 
   const $ = id => document.getElementById(id);
   const video = $("video"), work = $("work");
@@ -456,12 +463,27 @@
     x.save(); x.strokeStyle = "#000"; x.lineWidth = 2; x.setLineDash([8, 6]);
     x.beginPath(); x.moveTo(x0, y); x.lineTo(x1, y); x.stroke(); x.restore();
   }
+  // grey → auto levels (stretch 1%–99%) → contrast/brightness → thermal mid-tone lift (dots spread, so prints look darker)
   function toneAdjust(x, sx, sy, w, h, bright, contrast){
-    const d = x.getImageData(sx, sy, w, h), p = d.data;
-    for (let i = 0; i < p.length; i += 4){
-      let g = 0.299 * p[i] + 0.587 * p[i+1] + 0.114 * p[i+2];
+    const d = x.getImageData(sx, sy, w, h), p = d.data, n = p.length / 4;
+    const grey = new Float32Array(n), hist = new Uint32Array(256);
+    for (let i = 0, j = 0; i < p.length; i += 4, j++){
+      const g = 0.299 * p[i] + 0.587 * p[i+1] + 0.114 * p[i+2];
+      grey[j] = g; hist[g | 0]++;
+    }
+    let lo = 0, hi = 255;
+    if (S.autoLevel === "1"){
+      const cut = n * 0.01; let acc = 0;
+      for (lo = 0; lo < 255 && (acc += hist[lo]) < cut; lo++);
+      acc = 0; for (hi = 255; hi > 0 && (acc += hist[hi]) < cut; hi--);
+      if (hi - lo < 40){ lo = 0; hi = 255; }          // flat image: leave it alone
+    }
+    const span = hi - lo, gam = 1 / (parseFloat(S.gamma) || 1);
+    for (let i = 0, j = 0; i < p.length; i += 4, j++){
+      let g = (grey[j] - lo) * 255 / span;
       g = (g - 128) * contrast + 128 + bright;
       g = g < 0 ? 0 : g > 255 ? 255 : g;
+      g = 255 * Math.pow(g / 255, gam);
       p[i] = p[i+1] = p[i+2] = g;
     }
     x.putImageData(d, sx, sy);
@@ -754,10 +776,10 @@
   });
 
   // ---------- settings UI ----------
-  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","dither","title","footer","showDate"];
+  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","gamma","autoLevel","dither","title","footer","showDate"];
   function fillForm(){
     for (const f of fields) $("s_" + f).value = S[f];
-    $("v_bright").textContent = S.bright; $("v_contrast").textContent = Number(S.contrast).toFixed(2);
+    $("v_bright").textContent = S.bright; $("v_contrast").textContent = Number(S.contrast).toFixed(2); $("v_gamma").textContent = Number(S.gamma).toFixed(2);
   }
   function readForm(){
     const prevFacing = S.facing;
@@ -768,6 +790,7 @@
     S.countdown = parseInt(S.countdown, 10) || 0;
     S.bright = parseInt(S.bright, 10) || 0;
     S.contrast = parseFloat(S.contrast) || 1;
+    S.gamma = parseFloat(S.gamma) || 1;
     store.set("rc_settings", S);
     video.classList.toggle("mirror", S.mirror === "1");
     layoutGuide();
@@ -775,6 +798,7 @@
   }
   $("s_bright").addEventListener("input", e => $("v_bright").textContent = e.target.value);
   $("s_contrast").addEventListener("input", e => $("v_contrast").textContent = Number(e.target.value).toFixed(2));
+  $("s_gamma").addEventListener("input", e => $("v_gamma").textContent = Number(e.target.value).toFixed(2));
   $("gear").addEventListener("click", () => { fillForm(); camInfo(); settingsEl.style.display = "flex"; });
   $("s_ratio").addEventListener("change", camInfo);
   $("b_save").addEventListener("click", () => {
@@ -815,6 +839,7 @@
     }
     showStatus("크롬 오른쪽 위 ⋮ 메뉴 → '앱 설치' 또는 '홈 화면에 추가'를 눌러 주세요", "err", 7000);
   });
+  $("b_tone").addEventListener("click", () => { resetTone(); fillForm(); showStatus("화질을 기본값으로 되돌렸습니다", "ok"); });
   $("b_reset").addEventListener("click", () => { store.set("rc_serial", 0); showStatus("번호를 0으로 초기화했습니다", "ok"); });
   settingsEl.addEventListener("click", e => { if (e.target === settingsEl) settingsEl.style.display = "none"; });
 
