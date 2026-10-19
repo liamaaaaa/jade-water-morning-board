@@ -27,15 +27,19 @@
   #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
   #count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:min(40vw,40vh);font-weight:800;color:#fff;text-shadow:0 6px 40px rgba(0,0,0,.6);pointer-events:none}
-  #shoot{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);
-    width:96px;height:96px;border-radius:50%;border:6px solid rgba(255,255,255,.9);background:rgba(255,255,255,.25);
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-  #shoot:active{background:rgba(255,255,255,.6)}
+  #shoot{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    width:132px;height:132px;border-radius:50%;border:7px solid #fff;background:rgba(255,255,255,.22);color:#fff;
+    font-size:22px;font-weight:800;letter-spacing:.04em;text-shadow:0 1px 6px rgba(0,0,0,.5);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 0 0 0 rgba(255,255,255,.55);animation:pulse 2.2s infinite}
+  #shoot:active{background:rgba(255,255,255,.6);transform:translateX(-50%) scale(.95)}
+  #shoot[hidden]{display:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.5)}70%{box-shadow:0 0 0 22px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  @media (prefers-reduced-motion: reduce){#shoot{animation:none}}
   #gear{position:fixed;right:calc(16px + env(safe-area-inset-right));top:calc(16px + env(safe-area-inset-top));
     width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;font-size:22px;opacity:.55}
   #hint{position:fixed;left:0;right:0;top:calc(18px + env(safe-area-inset-top));text-align:center;
     font-size:clamp(18px,2.6vw,26px);font-weight:600;color:rgba(255,255,255,.75);text-shadow:0 1px 8px rgba(0,0,0,.6);pointer-events:none}
-  #status{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  #status{position:fixed;left:50%;bottom:calc(180px + env(safe-area-inset-bottom));transform:translateX(-50%);
     padding:10px 18px;border-radius:999px;background:rgba(0,0,0,.6);font-size:16px;display:none;white-space:nowrap}
   #status.ok{color:var(--ok)} #status.err{color:var(--err);white-space:normal;max-width:90vw;text-align:center}
   #result{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding-top:64px;padding-bottom:110px}
@@ -74,12 +78,12 @@
   <video id="video" autoplay muted playsinline></video>
   <div id="frameGuide"></div>
 </div>
-<div id="hint">화면을 터치하면 5초 뒤 촬영됩니다</div>
+<div id="hint">가운데 버튼을 누르면 5초 뒤 촬영됩니다</div>
 <button id="usbChip" type="button" hidden>프린터 연결</button>
 <div id="flash"></div>
 <div id="count"></div>
 <div id="status"></div>
-<button id="shoot" aria-label="촬영"></button>
+<button id="shoot" aria-label="촬영">촬영</button>
 <button id="gear" aria-label="설정">⚙︎</button>
 
 <div id="result">
@@ -142,6 +146,7 @@
       <button class="btn" id="b_test">테스트 출력</button>
       <button class="btn" id="b_cert">프린터 인증서 허용</button>
       <button class="btn" id="b_reset">번호 초기화</button>
+      <button class="btn" id="b_install">바탕화면에 아이콘 설치</button>
     </div>
     <p class="note">
       · <b>USB 직결</b>: 안드로이드 크롬에서만 됩니다. 처음 한 번 <b>프린터 연결</b>을 눌러 목록에서 엡손 프린터를 고르고, 이어서 뜨는 안드로이드 허용 창에서 "허용"을 누르세요.<br>
@@ -659,7 +664,7 @@
 
   async function shoot(){
     const n = Math.max(0, parseInt(S.countdown, 10) || 0);
-    $("hint").textContent = "카메라를 보세요";
+    $("hint").textContent = "카메라를 보세요"; $("shoot").hidden = true;
     for (let i = n; i > 0; i--){ countEl.textContent = i; await sleep(1000); }
     countEl.textContent = "";
     flashEl.style.opacity = "1"; setTimeout(() => flashEl.style.opacity = "0", 120);
@@ -674,7 +679,7 @@
     store.set("rc_serial", serial);
     showStatus("출력 완료 ✓ 영수증을 가져가세요", "ok", 4000);
   }
-  function clearPending(){ pending = null; clearTimeout(pendingTimer); hideResult(); $("hint").textContent = `화면을 터치하면 ${Math.max(0, parseInt(S.countdown,10)||0)}초 뒤 촬영됩니다`; }
+  function clearPending(){ pending = null; clearTimeout(pendingTimer); hideResult(); $("hint").textContent = `가운데 버튼을 누르면 ${Math.max(0, parseInt(S.countdown,10)||0)}초 뒤 촬영됩니다`; $("shoot").hidden = false; }
 
   // primary = 촬영, or 출력 when a preview is waiting
   async function trigger(){
@@ -696,13 +701,14 @@
         showResult(shot.r.dataURL, false);
         await doPrint(shot.r, shot.serial);
         await sleep(3500);
-        hideResult();
+        hideResult(); clearPending();
       }
     }catch(e){
       showStatus(e.message || String(e), "err", 6000);
       await sleep(1200);
     }finally{
       countEl.textContent = ""; busy = false;
+      if (!pending) $("shoot").hidden = false;
     }
   }
   // secondary = 다시 찍기
@@ -732,7 +738,6 @@
 
   // on-screen button
   $("shoot").addEventListener("click", e => { e.stopPropagation(); trigger(); });
-  $("stage").addEventListener("click", () => { if (!pending) trigger(); });
   resultEl.addEventListener("click", e => { if (e.target === resultEl && !pending) hideResult(); });
 
   // physical button: keyboard-type Bluetooth/USB buttons, presenters, foot pedals
@@ -795,6 +800,21 @@
   });
   $("b_usb").addEventListener("click", usbPick);
   chip.addEventListener("click", usbPick);
+  // ---------- install as app ----------
+  let installEvt = null;
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
+  addEventListener("appinstalled", () => { installEvt = null; showStatus("바탕화면에 '영수증 포토' 아이콘을 만들었습니다", "ok", 4000); });
+  $("b_install").addEventListener("click", async () => {
+    const standalone = matchMedia("(display-mode: standalone)").matches || (matchMedia("(display-mode: fullscreen)").matches && !document.fullscreenElement);
+    if (standalone){ showStatus("이미 아이콘으로 실행 중입니다", "ok"); return; }
+    if (installEvt){
+      installEvt.prompt();
+      const r = await installEvt.userChoice.catch(() => null);
+      if (r && r.outcome === "accepted") showStatus("설치를 시작했습니다", "ok");
+      installEvt = null; return;
+    }
+    showStatus("크롬 오른쪽 위 ⋮ 메뉴 → '앱 설치' 또는 '홈 화면에 추가'를 눌러 주세요", "err", 7000);
+  });
   $("b_reset").addEventListener("click", () => { store.set("rc_serial", 0); showStatus("번호를 0으로 초기화했습니다", "ok"); });
   settingsEl.addEventListener("click", e => { if (e.target === settingsEl) settingsEl.style.display = "none"; });
 
