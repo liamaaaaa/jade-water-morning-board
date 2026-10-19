@@ -32,7 +32,12 @@
     font-size:22px;font-weight:800;letter-spacing:.04em;text-shadow:0 1px 6px rgba(0,0,0,.5);
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 0 0 0 rgba(255,255,255,.55);animation:pulse 2.2s infinite}
   #shoot:active{background:rgba(255,255,255,.6);transform:translateX(-50%) scale(.95)}
+  #shoot{z-index:5}
   #shoot[hidden]{display:none}
+  #batt{position:fixed;right:calc(70px + env(safe-area-inset-right));top:calc(24px + env(safe-area-inset-top));font-size:14px;font-weight:700;color:#fff;opacity:.7;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+  #batt.low{color:#ff6b5e;opacity:1}
+  #sleepCover{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);font-size:clamp(20px,3vw,30px);font-weight:600}
+  #sleepCover[hidden]{display:none}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.5)}70%{box-shadow:0 0 0 22px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
   @media (prefers-reduced-motion: reduce){#shoot{animation:none}}
   #gear{position:fixed;right:calc(16px + env(safe-area-inset-right));top:calc(16px + env(safe-area-inset-top));
@@ -84,7 +89,9 @@
 <div id="count"></div>
 <div id="status"></div>
 <button id="shoot" aria-label="촬영">촬영</button>
+<div id="batt" hidden></div>
 <button id="gear" aria-label="설정">⚙︎</button>
+<div id="sleepCover" hidden><div>가운데 버튼을 누르면 시작합니다</div></div>
 
 <div id="result">
   <img id="resultImg" alt="출력 미리보기">
@@ -126,6 +133,8 @@
     <p class="sub" id="camInfo" style="margin:6px 0 0;font-size:13px"></p>
     <div class="row"><label for="s_countdown">카운트다운(초)</label><input id="s_countdown" type="number" min="0" max="10" step="1"></div>
 
+    <div class="row"><label for="s_idleMin">절전 대기 (분)</label>
+      <select id="s_idleMin"><option value="0">끄기</option><option value="2">2분</option><option value="3">3분 (추천)</option><option value="5">5분</option><option value="10">10분</option></select></div>
     <div class="sec">사진 보정</div>
     <div class="row"><label for="s_bright">밝기 <span id="v_bright"></span></label><input id="s_bright" type="range" min="-60" max="60" step="1"></div>
     <div class="row"><label for="s_contrast">대비 <span id="v_contrast"></span></label><input id="s_contrast" type="range" min="0.6" max="2" step="0.05"></div>
@@ -173,7 +182,7 @@
   const DEFAULTS = {
     conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
     facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
-    bright: 8, contrast: 1.1, dither: "atkinson", autoLevel: "1", gamma: 1.55, faceBoost: "1", faceAmt: 0.6, toneVer: 4,
+    bright: 8, contrast: 1.1, dither: "atkinson", autoLevel: "1", idleMin: 3, gamma: 1.55, faceBoost: "1", faceAmt: 0.6, toneVer: 4,
     design: "halloween",
     title: "JADE & WATER  SEONGSU",
     footer: "오늘의 한 장\nthank you for visiting",
@@ -240,12 +249,37 @@
   addEventListener("pointerdown", goFullscreen, { capture:true });
   addEventListener("keydown", goFullscreen, { capture:true });
 
+  // battery: show level so staff can see if the tablet is actually charging
+  if (navigator.getBattery) navigator.getBattery().then(b => {
+    const el = $("batt");
+    const draw = () => { el.hidden = false; el.textContent = (b.charging ? "⚡ " : "") + Math.round(b.level * 100) + "%"; el.classList.toggle("low", !b.charging && b.level < 0.2); };
+    ["levelchange","chargingchange"].forEach(ev => b.addEventListener(ev, draw)); draw();
+  }).catch(()=>{});
+  // standby: switch the camera off after a few idle minutes to save battery; the shutter wakes it
+  let idleTimer = null;
+  function poke(){
+    clearTimeout(idleTimer);
+    const m = parseFloat(S.idleMin) || 0;
+    if (m > 0) idleTimer = setTimeout(goSleep, m * 60000);
+  }
+  function goSleep(){
+    if (busy || pending || settingsEl.style.display === "flex") { poke(); return; }
+    if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    $("sleepCover").hidden = false;
+  }
+  async function wake(){
+    if (!$("sleepCover").hidden){ $("sleepCover").hidden = true; await startCamera(); await sleep(700); }
+    poke();
+  }
+  addEventListener("pointerdown", poke, { capture:true });
+  $("sleepCover").addEventListener("click", wake);
+
   // keep screen awake
   let wakeLock = null;
   async function keepAwake(){
     try{ if ("wakeLock" in navigator && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
   }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ keepAwake(); if (!stream || !stream.active) startCamera(); } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ keepAwake(); if ($("sleepCover").hidden && (!stream || !stream.active)) startCamera(); } });
 
   // ---------- status ----------
   let statusTimer = null;
@@ -676,7 +710,7 @@
     }
   }
   if ("usb" in navigator){
-    navigator.usb.addEventListener("connect", () => { if (!usb.dev) usbAuto(); });
+    navigator.usb.addEventListener("connect", () => { if (!usb.dev) setTimeout(usbAuto, 700); });
     navigator.usb.addEventListener("disconnect", e => { if (e.device === usb.dev){ usb.dev = null; usbStatus("프린터 연결 끊김", "bad"); } });
   }
 
@@ -704,19 +738,27 @@
     for (const p of parts){ out.set(p, o); o += p.length; }
     return out;
   }
+  async function usbSend(data){
+    const CH = 16384;
+    for (let i = 0; i < data.length; i += CH){
+      const res = await usb.dev.transferOut(usb.ep, data.subarray(i, i + CH));
+      if (res.status !== "ok") throw new Error(res.status);
+    }
+  }
   async function usbPrint(r){
     if (!usb.dev) await usbAuto();
-    if (!usb.dev) throw new Error("프린터가 연결되지 않았습니다. 왼쪽 위 '프린터 연결'을 누르세요");
-    const data = escposBytes(r), CH = 16384;
-    try{
-      for (let i = 0; i < data.length; i += CH){
-        const res = await usb.dev.transferOut(usb.ep, data.subarray(i, i + CH));
-        if (res.status !== "ok") throw new Error(res.status);
+    const data = escposBytes(r);
+    for (let attempt = 0; attempt < 3; attempt++){
+      if (!usb.dev){ await sleep(900); await usbAuto(); }
+      if (!usb.dev) continue;
+      try{ await usbSend(data); return; }
+      catch(e){
+        try{ await usb.dev.close(); }catch(_){}
+        usb.dev = null; usbStatus("프린터 다시 연결 중…", "bad");
       }
-    }catch(e){
-      usb.dev = null; usbStatus("프린터 연결 끊김", "bad");
-      throw new Error("출력 실패: 프린터 연결을 확인하세요 (" + (e.message || e.name) + ")");
     }
+    usbStatus("프린터 연결 끊김", "bad");
+    throw new Error("출력 실패: 프린터 연결을 확인하세요. 충전기를 꽂거나 뺀 직후라면 5초 뒤 다시 눌러 주세요");
   }
   async function printReceipt(r){
     if (S.conn === "usb") return usbPrint(r);
@@ -750,6 +792,7 @@
   // primary = 촬영, or 출력 when a preview is waiting
   async function trigger(){
     if (busy || settingsEl.style.display === "flex") return;
+    if (!$("sleepCover").hidden || !stream || !stream.active) await wake();
     busy = true;
     try{
       if (pending){
@@ -820,7 +863,7 @@
   });
 
   // ---------- settings UI ----------
-  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","gamma","autoLevel","faceBoost","dither","title","footer","showDate"];
+  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","idleMin","bright","contrast","gamma","autoLevel","faceBoost","dither","title","footer","showDate"];
   function fillForm(){
     for (const f of fields) $("s_" + f).value = S[f];
     $("v_bright").textContent = S.bright; $("v_contrast").textContent = Number(S.contrast).toFixed(2); $("v_gamma").textContent = Number(S.gamma).toFixed(2);
@@ -888,7 +931,7 @@
   settingsEl.addEventListener("click", e => { if (e.target === settingsEl) settingsEl.style.display = "none"; });
 
   // ---------- boot ----------
-  startCamera();
+  startCamera(); poke();
   keepAwake();
   if (S.conn === "usb") usbAuto(); else chip.hidden = true;
   if (S.conn === "net" && !S.ip){ setTimeout(() => { fillForm(); settingsEl.style.display = "flex"; }, 600); }
