@@ -130,6 +130,8 @@
     <div class="row"><label for="s_bright">밝기 <span id="v_bright"></span></label><input id="s_bright" type="range" min="-60" max="60" step="1"></div>
     <div class="row"><label for="s_contrast">대비 <span id="v_contrast"></span></label><input id="s_contrast" type="range" min="0.6" max="2" step="0.05"></div>
     <div class="row"><label for="s_gamma">중간톤 밝게 <span id="v_gamma"></span></label><input id="s_gamma" type="range" min="1" max="2.4" step="0.05"></div>
+    <div class="row"><label for="s_faceBoost">역광 보정 (얼굴 살리기)</label>
+      <select id="s_faceBoost"><option value="1">켜기 (추천)</option><option value="0">끄기</option></select></div>
     <div class="row"><label for="s_autoLevel">자동 밝기 맞춤</label>
       <select id="s_autoLevel"><option value="1">켜기 (추천)</option><option value="0">끄기</option></select></div>
     <div class="row"><label for="s_dither">점묘 방식</label>
@@ -171,7 +173,7 @@
   const DEFAULTS = {
     conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
     facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
-    bright: 10, contrast: 1.1, dither: "atkinson", autoLevel: "1", gamma: 1.5, toneVer: 2,
+    bright: 5, contrast: 1.15, dither: "atkinson", autoLevel: "1", gamma: 1.3, faceBoost: "1", faceAmt: 0.85, toneVer: 3,
     design: "halloween",
     title: "JADE & WATER  SEONGSU",
     footer: "오늘의 한 장\nthank you for visiting",
@@ -182,7 +184,7 @@
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
   let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
-  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","dither"];
+  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither"];
   function resetTone(){ for (const k of TONE_KEYS) S[k] = DEFAULTS[k]; S.toneVer = DEFAULTS.toneVer; store.set("rc_settings", S); }
   if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();      // apply the new tuned picture defaults once
 
@@ -478,6 +480,17 @@
       acc = 0; for (hi = 255; hi > 0 && (acc += hist[hi]) < cut; hi--);
       if (hi - lo < 40){ lo = 0; hi = 255; }          // flat image: leave it alone
     }
+    if (S.faceBoost === "1"){                            // backlight: local contrast (CLAHE) + light sharpening
+      clahe(grey, w, h, 4, 4, 2.6, parseFloat(S.faceAmt) || 0.75);
+      sharpen(grey, w, h, 0.6);
+      hist.fill(0); for (let j = 0; j < n; j++) hist[Math.max(0, Math.min(255, grey[j] | 0))]++;
+      if (S.autoLevel === "1"){
+        const cut = n * 0.01; let acc = 0;
+        for (lo = 0; lo < 255 && (acc += hist[lo]) < cut; lo++);
+        acc = 0; for (hi = 255; hi > 0 && (acc += hist[hi]) < cut; hi--);
+        if (hi - lo < 40){ lo = 0; hi = 255; }
+      }
+    }
     const span = hi - lo, gam = 1 / (parseFloat(S.gamma) || 1);
     for (let i = 0, j = 0; i < p.length; i += 4, j++){
       let g = (grey[j] - lo) * 255 / span;
@@ -487,6 +500,37 @@
       p[i] = p[i+1] = p[i+2] = g;
     }
     x.putImageData(d, sx, sy);
+  }
+
+  // contrast-limited adaptive histogram equalisation on a grey Float32Array, blended by amt
+  function clahe(g, w, h, tx, ty, clip, amt){
+    const tw = Math.ceil(w / tx), th = Math.ceil(h / ty), maps = [];
+    for (let j = 0; j < ty; j++) for (let i = 0; i < tx; i++){
+      const hist = new Float32Array(256); let cnt = 0;
+      for (let y = j*th; y < Math.min(h, (j+1)*th); y++) for (let x = i*tw; x < Math.min(w, (i+1)*tw); x++){ hist[Math.max(0, Math.min(255, g[y*w+x] | 0))]++; cnt++; }
+      const lim = clip * cnt / 256; let ex = 0;
+      for (let k = 0; k < 256; k++) if (hist[k] > lim){ ex += hist[k] - lim; hist[k] = lim; }
+      const add = ex / 256, m = new Float32Array(256); let acc = 0;
+      for (let k = 0; k < 256; k++){ acc += hist[k] + add; m[k] = acc * 255 / Math.max(1, cnt); }
+      maps.push(m);
+    }
+    for (let y = 0; y < h; y++){
+      const fy = Math.max(0, Math.min(ty - 1, (y - th/2) / th)), y0 = Math.floor(fy), y1 = Math.min(ty - 1, y0 + 1), ay = fy - y0;
+      for (let x = 0; x < w; x++){
+        const fx = Math.max(0, Math.min(tx - 1, (x - tw/2) / tw)), x0 = Math.floor(fx), x1 = Math.min(tx - 1, x0 + 1), ax = fx - x0;
+        const v = Math.max(0, Math.min(255, g[y*w+x] | 0));
+        const e = (maps[y0*tx+x0][v]*(1-ax) + maps[y0*tx+x1][v]*ax)*(1-ay) + (maps[y1*tx+x0][v]*(1-ax) + maps[y1*tx+x1][v]*ax)*ay;
+        g[y*w+x] = g[y*w+x]*(1-amt) + e*amt;
+      }
+    }
+  }
+  function sharpen(g, w, h, amt){
+    const src = Float32Array.from(g);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++){
+      const i = y*w + x;
+      const blur = (src[i-w-1]+src[i-w]+src[i-w+1]+src[i-1]+src[i]+src[i+1]+src[i+w-1]+src[i+w]+src[i+w+1]) / 9;
+      g[i] = src[i] + (src[i] - blur) * amt;
+    }
   }
 
   // returns Uint8Array, 1 = black dot
@@ -776,7 +820,7 @@
   });
 
   // ---------- settings UI ----------
-  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","gamma","autoLevel","dither","title","footer","showDate"];
+  const fields = ["design","conn","flow","ip","https","width","copies","test","facing","mirror","ratio","countdown","bright","contrast","gamma","autoLevel","faceBoost","dither","title","footer","showDate"];
   function fillForm(){
     for (const f of fields) $("s_" + f).value = S[f];
     $("v_bright").textContent = S.bright; $("v_contrast").textContent = Number(S.contrast).toFixed(2); $("v_gamma").textContent = Number(S.gamma).toFixed(2);
