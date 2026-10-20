@@ -82,7 +82,7 @@
     html,body{background:#fff!important}
     body > *:not(#printArea){display:none!important}
     #printArea{display:block!important}
-    #printArea img{display:block;width:72mm;margin:0 auto;image-rendering:pixelated;break-after:page}
+    #printArea img{display:block;width:72.25mm;margin:0 auto;image-rendering:pixelated;break-after:page}
     #printArea img:last-child{break-after:auto}
   }
 </style>
@@ -192,7 +192,7 @@
   const DEFAULTS = {
     conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
     facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
-    bright: 8, contrast: 1.1, dither: "atkinson", autoLevel: "1", idleMin: 3, gamma: 1.55, faceBoost: "1", faceAmt: 0.6, toneVer: 4,
+    bright: 4, contrast: 1.1, dither: "atkinson", autoLevel: "1", idleMin: 3, gamma: 1.4, faceBoost: "1", faceAmt: 0.5, hiKnee: 232, toneVer: 5,
     design: "halloween",
     title: "JADE & WATER  SEONGSU",
     footer: "오늘의 한 장\nthank you for visiting",
@@ -203,7 +203,7 @@
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
   let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
-  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither"];
+  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither","hiKnee"];
   function resetTone(){ for (const k of TONE_KEYS) S[k] = DEFAULTS[k]; S.toneVer = DEFAULTS.toneVer; store.set("rc_settings", S); }
   if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();      // apply the new tuned picture defaults once
 
@@ -538,12 +538,13 @@
         if (hi - lo < 40){ lo = 0; hi = 255; }
       }
     }
-    const span = hi - lo, gam = 1 / (parseFloat(S.gamma) || 1);
+    const span = hi - lo, gam = 1 / (parseFloat(S.gamma) || 1), knee = parseFloat(S.hiKnee) || 255;
     for (let i = 0, j = 0; i < p.length; i += 4, j++){
       let g = (grey[j] - lo) * 255 / span;
       g = (g - 128) * contrast + 128 + bright;
       g = g < 0 ? 0 : g > 255 ? 255 : g;
       g = 255 * Math.pow(g / 255, gam);
+      if (g > knee) g = knee + (g - knee) * 0.55;       // highlight roll-off: lit faces keep a few dots instead of going paper-white
       p[i] = p[i+1] = p[i+2] = g;
     }
     x.putImageData(d, sx, sy);
