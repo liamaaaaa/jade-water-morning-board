@@ -76,9 +76,19 @@
   .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
   .note{font-size:13px;color:var(--muted);line-height:1.55;margin-top:12px}
   @media (max-width:520px){.row{grid-template-columns:1fr}}
+  #printArea{display:none}
+  @media print{
+    @page{margin:0}
+    html,body{background:#fff!important}
+    body > *:not(#printArea){display:none!important}
+    #printArea{display:block!important}
+    #printArea img{display:block;width:72mm;margin:0 auto;image-rendering:pixelated;break-after:page}
+    #printArea img:last-child{break-after:auto}
+  }
 </style>
 </head>
 <body>
+<div id="printArea"></div>
 <div id="stage">
   <video id="video" autoplay muted playsinline></video>
   <div id="frameGuide"></div>
@@ -105,7 +115,7 @@
 
     <div class="sec">프린터</div>
     <div class="row"><label for="s_conn">연결 방식</label>
-      <select id="s_conn"><option value="usb">USB 직결 (안드로이드 크롬)</option><option value="net">와이파이 / 랜 (엡손 ePOS)</option></select></div>
+      <select id="s_conn"><option value="usb">USB 직결 (WebUSB)</option><option value="sys">윈도우 프린터 드라이버 (엡손 APD)</option><option value="net">와이파이 / 랜 (엡손 ePOS)</option></select></div>
     <div class="row" id="usbRow"><label>USB 프린터</label>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="b_usb" type="button">프린터 연결</button><span id="usbState" style="color:var(--muted);font-size:14px">연결 안 됨</span></div></div>
     <div class="row"><label for="s_flow">출력 방식</label>
@@ -763,8 +773,25 @@
     usbStatus("프린터 연결 끊김", "bad");
     throw new Error("출력 실패: 프린터 연결을 확인하세요. 충전기를 꽂거나 뺀 직후라면 5초 뒤 다시 눌러 주세요");
   }
+  // Windows: print through the installed Epson driver. With Chrome started as
+  // --kiosk --kiosk-printing this goes straight to the default printer, no dialog.
+  async function sysPrint(r){
+    const cv = document.createElement("canvas"); cv.width = r.width; cv.height = r.height;
+    const g = cv.getContext("2d"), im = g.createImageData(r.width, r.height);
+    for (let i = 0; i < r.mono.length; i++){ const v = r.mono[i] ? 0 : 255; im.data[i*4] = im.data[i*4+1] = im.data[i*4+2] = v; im.data[i*4+3] = 255; }
+    g.putImageData(im, 0, 0);
+    const url = cv.toDataURL("image/png");
+    const copies = Math.max(1, Math.min(3, parseInt(S.copies, 10) || 1));
+    const area = $("printArea"); area.innerHTML = "";
+    const loads = [];
+    for (let k = 0; k < copies; k++){ const img = new Image(); img.src = url; area.appendChild(img); loads.push(img.decode().catch(()=>{})); }
+    await Promise.all(loads);
+    window.print();
+    area.innerHTML = "";
+  }
   async function printReceipt(r){
     if (S.conn === "usb") return usbPrint(r);
+    if (S.conn === "sys") return sysPrint(r);
     return eposPrint(r);
   }
 
