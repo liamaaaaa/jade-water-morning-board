@@ -192,7 +192,7 @@
   const DEFAULTS = {
     conn: "usb", flow: "confirm", ip: "", https: "1", width: "512", copies: 1, test: "0",
     facing: "user", mirror: "1", ratio: "0.75", countdown: 5,
-    bright: 4, contrast: 1.12, dither: "atkinson", autoLevel: "1", idleMin: 3, gamma: 1.45, faceBoost: "1", faceAmt: 0.6, hiKnee: 232, shadow: 15, autoExpo: "1", expoTarget: 0.52, toneVer: 7,
+    bright: 4, contrast: 1.12, dither: "atkinson", autoLevel: "1", idleMin: 3, gamma: 1.45, faceBoost: "1", faceAmt: 0.8, hiKnee: 232, shadow: 15, autoExpo: "1", expoTarget: 0.5, expoPct: 0.35, toneVer: 8,
     design: "halloween",
     title: "JADE & WATER  SEONGSU",
     footer: "오늘의 한 장\nthank you for visiting",
@@ -203,7 +203,7 @@
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
   let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
-  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither","hiKnee","shadow","autoExpo","expoTarget"];
+  const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither","hiKnee","shadow","autoExpo","expoTarget","expoPct"];
   function resetTone(){ for (const k of TONE_KEYS) S[k] = DEFAULTS[k]; S.toneVer = DEFAULTS.toneVer; store.set("rc_settings", S); }
   if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();      // apply the new tuned picture defaults once
 
@@ -528,7 +528,7 @@
       if (hi - lo < 40){ lo = 0; hi = 255; }          // flat image: leave it alone
     }
     if (S.faceBoost === "1"){                            // backlight: local contrast (CLAHE) + light sharpening
-      clahe(grey, w, h, 4, 4, 2.6, parseFloat(S.faceAmt) || 0.75);
+      clahe(grey, w, h, 8, 6, 3.0, parseFloat(S.faceAmt) || 0.75);   // finer tiles: a small person in the middle gets its own local exposure
       sharpen(grey, w, h, 0.6);
       hist.fill(0); for (let j = 0; j < n; j++) hist[Math.max(0, Math.min(255, grey[j] | 0))]++;
       if (S.autoLevel === "1"){
@@ -544,12 +544,16 @@
     const curve = v => { v = (v - lo) * 255 / span; v = (v - 128) * contrast + 128 + bright; return v < 0 ? 0 : v > 255 ? 255 : v; };
     let gam = 1 / (parseFloat(S.gamma) || 1);
     if (S.autoExpo !== "0"){
-      let sum = 0, cnt = 0;
-      const x0 = (w * 0.3) | 0, x1 = (w * 0.7) | 0, y0 = (h * 0.2) | 0, y1 = (h * 0.7) | 0;
-      for (let yy = y0; yy < y1; yy += 2) for (let xx = x0; xx < x1; xx += 2){ sum += curve(grey[yy * w + xx]); cnt++; }
-      const m = Math.min(0.9, Math.max(0.05, sum / cnt / 255)), target = parseFloat(S.expoTarget) || 0.52;
+      // meter the darker part of the centre (35th percentile), not the average:
+      // with a bright wall/window behind, the average is fooled; the person is the dark part
+      const ch = new Uint32Array(256); let cnt = 0;
+      const x0 = (w * 0.32) | 0, x1 = (w * 0.68) | 0, y0 = (h * 0.18) | 0, y1 = (h * 0.62) | 0;
+      for (let yy = y0; yy < y1; yy += 2) for (let xx = x0; xx < x1; xx += 2){ ch[curve(grey[yy * w + xx]) | 0]++; cnt++; }
+      let acc = 0, pv = 0; const want = cnt * (parseFloat(S.expoPct) || 0.35);
+      for (pv = 0; pv < 255 && (acc += ch[pv]) < want; pv++);
+      const m = Math.min(0.9, Math.max(0.04, pv / 255)), target = parseFloat(S.expoTarget) || 0.5;
       const need = Math.log(target) / Math.log(m);               // exponent that maps the centre mean to target
-      gam = Math.max(0.38, Math.min(gam, need));                 // only ever brighten more, never darker than the set gamma
+      gam = Math.max(0.3, Math.min(gam, need));                 // only ever brighten more, never darker than the set gamma
     }
     for (let i = 0, j = 0; i < p.length; i += 4, j++){
       let g = curve(grey[j]);
