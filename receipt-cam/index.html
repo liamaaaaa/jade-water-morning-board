@@ -218,7 +218,7 @@
 
     <div class="sec">디자인</div>
     <div class="row"><label for="s_design">프레임</label>
-      <select id="s_design"><option value="halloween">할로윈</option><option value="basic">기본 (문구만)</option><option value="halloweenFade">할로윈 (위아래 흐림)</option><option value="halloweenWin">할로윈 (가운데 창)</option></select></div>
+      <select id="s_design"><option value="halloween">할로윈</option><option value="vogue">매거진 커버 (JADE&amp;WATER)</option><option value="basic">기본 (문구만)</option><option value="halloweenFade">할로윈 (위아래 흐림)</option><option value="halloweenWin">할로윈 (가운데 창)</option></select></div>
     <div class="sec">문구 (기본 디자인일 때)</div>
     <div class="row"><label for="s_title">상단 문구</label><input id="s_title" type="text"></div>
     <div class="row"><label for="s_footer">하단 문구</label><textarea id="s_footer"></textarea></div>
@@ -265,7 +265,8 @@
   let S = Object.assign({}, DEFAULTS, store.get("rc_settings", {}));
   const TONE_KEYS = ["bright","contrast","gamma","autoLevel","faceBoost","faceAmt","dither","hiKnee","shadow","autoExpo","expoTarget","expoPct"];
   function resetTone(){ for (const k of TONE_KEYS) S[k] = DEFAULTS[k]; S.toneVer = DEFAULTS.toneVer; store.set("rc_settings", S); }
-  if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();      // apply the new tuned picture defaults once
+  if ((store.get("rc_settings", {}).toneVer || 0) < DEFAULTS.toneVer) resetTone();
+  if ((store.get("rc_settings", {}).designVer || 0) < 1){ S.design = "vogue"; S.designVer = 1; store.set("rc_settings", S); }   // switch to the new magazine cover once      // apply the new tuned picture defaults once
 
   const $ = id => document.getElementById(id);
   const video = $("video"), work = $("work");
@@ -377,6 +378,7 @@
   for (const k in FRAMES){ if (FRAMES[k].img) frameImgs[k] = frameImgs[FRAMES[k].img]; }
   function activeFrame(){ const f = FRAMES[S.design]; return f && frameImgs[S.design].complete ? f : null; }
   function designRatio(){
+    if (S.design === "vogue") return 512 / 700;
     const f = FRAMES[S.design];
     if (f && f.overlay) return 1 / f.aspect;
     if (f) return (f.rect[2]) / (f.rect[3] * f.aspect);
@@ -501,7 +503,71 @@
     return { width: W, height: H, mono: bw, dataURL: c.toDataURL("image/png") };
   }
 
+  // ---------- magazine cover (fashion-magazine layout, JADE&WATER masthead) ----------
+  const SERIF = 'Georgia,"Times New Roman","Noto Serif",serif';
+  const MONTHS = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+  function composeVogue(photo, serial){
+    const W = parseInt(S.width, 10), k = W / 512, H = Math.round(700 * k);
+    const c = work; c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
+    // photo, full bleed (cover)
+    const pr = photo.width / photo.height, cr = W / H;
+    let sw = photo.width, sh = photo.height, sx = 0, sy = 0;
+    if (pr > cr){ sw = sh * cr; sx = (photo.width - sw) / 2; } else { sh = sw / cr; sy = (photo.height - sh) / 2; }
+    x.drawImage(photo, sx, sy, sw, sh, 0, 0, W, H);
+    toneAdjust(x, 0, 0, W, H, S.bright, S.contrast);
+    // lift the photo only where type sits (top, bottom, left column) so the cover lines read
+    let g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "rgba(255,255,255,.75)"); g.addColorStop(.22, "rgba(255,255,255,.35)"); g.addColorStop(.32, "rgba(255,255,255,0)");
+    g.addColorStop(.70, "rgba(255,255,255,0)"); g.addColorStop(.88, "rgba(255,255,255,.7)"); g.addColorStop(1, "rgba(255,255,255,.85)");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    g = x.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, "rgba(255,255,255,.6)"); g.addColorStop(.3, "rgba(255,255,255,.35)"); g.addColorStop(.45, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const T = (str, px, py, font, align, spacing, halo) => {
+      x.font = font; x.textAlign = align || "left"; x.textBaseline = "top";
+      if ("letterSpacing" in x) x.letterSpacing = (spacing || 0) + "px";
+      x.lineJoin = "round"; x.strokeStyle = "#fff"; x.lineWidth = (halo == null ? 5 : halo) * k;
+      if (x.lineWidth > 0) x.strokeText(str, px, py);
+      x.fillStyle = "#000"; x.fillText(str, px, py);
+      if ("letterSpacing" in x) x.letterSpacing = "0px";
+    };
+    // masthead: tall, condensed serif across the full width
+    x.save();
+    x.font = `700 ${80*k}px ${SERIF}`;
+    if ("letterSpacing" in x) x.letterSpacing = (-3*k) + "px";
+    const mw = x.measureText("JADE&WATER").width, sxm = Math.min(1, (W - 10*k) / mw);
+    x.translate(W/2, 6*k); x.scale(sxm, 1.45);
+    T("JADE&WATER", 0, 0, `700 ${80*k}px ${SERIF}`, "center", -3*k, 6);
+    x.restore();
+    T("S E O N G S U", W/2, 128*k, `800 ${13*k}px ${FONT}`, "center", 5*k);
+    const d = new Date(), no = String(serial).padStart(4, "0");
+    T(`${MONTHS[d.getMonth()]} ${d.getFullYear()}`, 18*k, 172*k, `800 ${12*k}px ${FONT}`, "left", 2*k);
+    T(`No.${no} · ₩0`, W - 18*k, 172*k, `800 ${12*k}px ${FONT}`, "right", 2*k);
+    // cover lines
+    const L = 18*k;
+    T("EXCLUSIVE", L, 232*k, `800 ${12*k}px ${FONT}`, "left", 3*k);
+    T("오늘의 얼굴,", L, 250*k, `900 ${24*k}px ${FONT}`); T("단독 화보", L, 278*k, `900 ${24*k}px ${FONT}`);
+    T("STYLE", L, 330*k, `800 ${12*k}px ${FONT}`, "left", 3*k);
+    T("브런치가", L, 347*k, `800 ${18*k}px ${FONT}`); T("패션이 될 때", L, 370*k, `800 ${18*k}px ${FONT}`);
+    T("CULTURE", L, 410*k, `800 ${12*k}px ${FONT}`, "left", 3*k);
+    T("커피 한 잔의 미학", L, 427*k, `800 ${18*k}px ${FONT}`); T("p." + Number(no), L, 451*k, `italic 400 ${17*k}px ${SERIF}`);
+    // headline
+    T("The Face", L, H - 172*k, `700 ${54*k}px ${SERIF}`, "left", -1*k, 6);
+    T("of the Day", L, H - 122*k, `700 ${54*k}px ${SERIF}`, "left", -1*k, 6);
+    T(`${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())} · THE SEONGSU ISSUE`, L, H - 50*k, `800 ${13*k}px ${FONT}`, "left", 1*k);
+    // barcode
+    const bw = 100*k, bh = 34*k, bx = W - 18*k - bw, by = H - 20*k - bh - 14*k;
+    x.fillStyle = "#fff"; x.fillRect(bx - 6*k, by - 6*k, bw + 12*k, bh + 26*k);
+    x.fillStyle = "#000"; let px = bx, seed = serial * 7 + 3;
+    while (px < bx + bw - 2*k){ seed = (seed * 9301 + 49297) % 233280; const w = (1 + (seed % 3)) * k; x.fillRect(px, by, w, bh); px += w + (1 + (seed >> 3) % 2) * k * 1.2; }
+    T("JW " + no, bx + bw/2, by + bh + 3*k, `800 ${10*k}px ${FONT}`, "center", 1*k, 0);
+    return finish(x, c, W, H);
+  }
+
   function compose(photo, serial){
+    if (S.design === "vogue") return composeVogue(photo, serial);
     const F = activeFrame();
     if (F) return composeFrame(photo, serial, F);
     const W = parseInt(S.width, 10);
