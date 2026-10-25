@@ -91,6 +91,15 @@
   .steps li{display:flex;align-items:center;gap:12px;font-size:clamp(14px,1.55vw,21px);font-weight:700}
   .steps b{flex:none;width:clamp(26px,2.6vw,36px);height:clamp(26px,2.6vw,36px);border-radius:50%;background:var(--mint);color:var(--ink);
     display:flex;align-items:center;justify-content:center;font-size:.9em}
+  .e{display:block;font-size:.6em;font-weight:600;opacity:.7;letter-spacing:0;margin-top:.15em}
+  .steps li{align-items:flex-start}
+  .steps li > span:not(.e), .steps li{line-height:1.25}
+  .steps li .e{display:block;margin-top:.15em;font-size:.68em;color:#6c7a75;opacity:1}
+  .steps .t{display:flex;flex-direction:column}
+  body.res #hint{color:#fff;z-index:10}
+  .tip{font-size:clamp(14px,1.5vw,21px)!important}
+  #shoot .e{font-size:15px;opacity:.85;margin-top:2px}
+  #result .actions .btn .e{font-size:.55em}
   .tip{margin-top:4.2vh;padding:1.4vh 1.4vw;border-radius:14px;background:#fff;border:2px solid var(--mint);
     font-size:clamp(15px,1.7vw,23px);font-weight:800;color:var(--ink);line-height:1.3;max-width:100%}
   .tip span{display:inline-block;margin-right:.5em;padding:.15em .5em;border-radius:6px;background:var(--mintDeep);color:#fff;font-size:.62em;letter-spacing:.1em;vertical-align:.2em}
@@ -128,31 +137,31 @@
   <video id="video" autoplay muted playsinline></video>
   <div id="frameGuide"></div>
 </div>
-<div id="hint">가운데 버튼을 누르면 5초 뒤 촬영됩니다</div>
+<div id="hint">가운데 버튼을 누르면 5초 뒤 촬영됩니다<span class="e">Press the button — photo in 5 sec</span></div>
 <aside class="side" id="sideL" hidden>
   <div class="brand">JADE &amp; WATER · SEONGSU</div>
   <h1 class="big">사진을<br><em>찍으세요</em></h1>
-  <div class="en">Take a photo, take it home.</div>
+  <div class="en">Take a photo — get it as a receipt!</div>
   <ol class="steps">
-    <li><b>1</b>가운데 버튼 누르기</li>
-    <li><b>2</b><span id="stepSec">5초 뒤 찰칵</span></li>
-    <li><b>3</b>영수증 사진 받기</li>
+    <li><b>1</b><span class="t">가운데 버튼 누르기<span class="e">Press the button</span></span></li>
+    <li><b>2</b><span class="t"><span id="stepSec">5초 뒤 찰칵</span><span class="e" id="stepSecEn">Smile in 5 sec</span></span></li>
+    <li><b>3</b><span class="t">영수증 사진 받기<span class="e">Take your receipt photo</span></span></li>
   </ol>
-  <div class="tip"><span>TIP</span>가까이서 찍어야 잘 나와요<small>Step closer for a clearer photo</small></div>
+  <div class="tip"><span>TIP</span>가까이서 찍어야 잘 나와요<small>Come closer for a better photo</small></div>
 </aside>
 <aside class="side" id="sideR" hidden>
   <div class="mini"><i style="width:70%"></i><i style="width:45%"></i><div class="ph"></div><i style="width:55%"></i></div>
-  <div class="label">오늘의 한 장</div>
-  <div class="sub2">찍은 사진이<br>영수증으로 나와요</div>
+  <div class="label">오늘의 한 장<span class="e" style="font-size:.55em">Today's Shot</span></div>
+  <div class="sub2">찍은 사진이<br>영수증으로 나와요<br><span style="font-size:.9em">Your photo prints<br>as a receipt</span></div>
 </aside>
 <button id="usbChip" type="button" hidden>프린터 연결</button>
 <div id="flash"></div>
 <div id="count"></div>
 <div id="status"></div>
-<button id="shoot" aria-label="촬영">촬영</button>
+<button id="shoot" aria-label="촬영 Take photo">촬영<span class="e">PHOTO</span></button>
 <div id="batt" hidden></div>
 <button id="gear" aria-label="설정">⚙︎</button>
-<div id="sleepCover" hidden><div>가운데 버튼을 누르면 시작합니다</div></div>
+<div id="sleepCover" hidden><div style="text-align:center">가운데 버튼을 누르면 시작합니다<span class="e">Tap to start</span></div></div>
 
 <div id="result">
   <img id="resultImg" alt="출력 미리보기">
@@ -296,7 +305,7 @@
     if (w > vw * 0.9){ w = vw * 0.9; h = w / r; }
     g.style.width = w + "px"; g.style.height = h + "px";
     const side = (vw - w) / 2, show = side >= 200, sec = Math.max(0, parseInt(S.countdown, 10) || 0);
-    $("stepSec").textContent = sec ? sec + "초 뒤 찰칵" : "바로 찰칵";
+    $("stepSec").textContent = sec ? sec + "초 뒤 찰칵" : "바로 찰칵"; $("stepSecEn").textContent = sec ? "Smile in " + sec + " sec" : "Smile!";
     for (const id of ["sideL","sideR"]){ const el = $(id); el.hidden = !show; el.style.width = side + "px"; }
   }
   addEventListener("resize", layoutGuide);
@@ -872,7 +881,7 @@
 
   async function shoot(){
     const n = Math.max(0, parseInt(S.countdown, 10) || 0);
-    $("hint").textContent = "카메라를 보세요"; $("shoot").hidden = true;
+    $("hint").innerHTML = '카메라를 보세요<span class="e">Look at the camera!</span>'; $("shoot").hidden = true;
     for (let i = n; i > 0; i--){ countEl.textContent = i; await sleep(1000); }
     countEl.textContent = "";
     flashEl.style.opacity = "1"; setTimeout(() => flashEl.style.opacity = "0", 120);
@@ -882,12 +891,12 @@
   }
   async function doPrint(r, serial){
     if (S.test === "1"){ showStatus("테스트 모드 · 출력하지 않음", "ok"); return; }
-    showStatus("출력 중…", "", 0);
+    showStatus("출력 중… Printing…", "", 0);
     await printReceipt(r);
     store.set("rc_serial", serial);
-    showStatus("출력 완료 ✓ 영수증을 가져가세요", "ok", 4000);
+    showStatus("출력 완료 ✓ 영수증을 가져가세요 · Done! Take your receipt", "ok", 4000);
   }
-  function clearPending(){ pending = null; clearTimeout(pendingTimer); hideResult(); $("hint").textContent = `가운데 버튼을 누르면 ${Math.max(0, parseInt(S.countdown,10)||0)}초 뒤 촬영됩니다`; $("shoot").hidden = false; }
+  function clearPending(){ pending = null; clearTimeout(pendingTimer); hideResult(); { const n = Math.max(0, parseInt(S.countdown,10)||0); $("hint").innerHTML = `가운데 버튼을 누르면 ${n}초 뒤 촬영됩니다<span class="e">Press the button — photo in ${n} sec</span>`; } $("shoot").hidden = false; }
 
   // primary = 촬영, or 출력 when a preview is waiting
   async function trigger(){
@@ -904,7 +913,7 @@
       if (S.flow === "confirm"){
         pending = shot;
         showResult(shot.r.dataURL, true);
-        $("hint").textContent = "마음에 들면 출력, 아니면 다시 찍기를 누르세요";
+        $("hint").innerHTML = '마음에 들면 출력, 아니면 다시 찍기를 누르세요<span class="e">Print it, or retake</span>';
         pendingTimer = setTimeout(clearPending, 30000);
       }else{
         showResult(shot.r.dataURL, false);
@@ -913,7 +922,7 @@
         hideResult(); clearPending();
       }
     }catch(e){
-      showStatus(e.message || String(e), "err", 6000);
+      showStatus((e.message || String(e)) + " · Print error — please ask our staff", "err", 6000);
       await sleep(1200);
     }finally{
       countEl.textContent = ""; busy = false;
@@ -929,9 +938,9 @@
   function showResult(url, confirm){
     resultImg.src = url; resultActions.innerHTML = "";
     if (confirm){
-      const again = document.createElement("button"); again.className = "btn"; again.textContent = "다시 찍기";
+      const again = document.createElement("button"); again.className = "btn"; again.innerHTML = '다시 찍기<span class="e">Retake</span>';
       again.addEventListener("click", retake);
-      const go = document.createElement("button"); go.className = "btn primary"; go.textContent = "출력";
+      const go = document.createElement("button"); go.className = "btn primary"; go.innerHTML = '출력<span class="e">Print</span>';
       go.addEventListener("click", trigger);
       resultActions.append(again, go);
     }
@@ -940,9 +949,9 @@
       a.href = url; a.download = "receipt.png"; a.className = "btn"; a.textContent = "이미지 저장";
       resultActions.appendChild(a);
     }
-    resultEl.style.display = "flex";
+    resultEl.style.display = "flex"; document.body.classList.add("res");
   }
-  function hideResult(){ resultEl.style.display = "none"; }
+  function hideResult(){ resultEl.style.display = "none"; document.body.classList.remove("res"); }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // on-screen button
