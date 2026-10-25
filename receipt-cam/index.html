@@ -104,6 +104,14 @@
     font-size:clamp(15px,1.7vw,23px);font-weight:800;color:var(--ink);line-height:1.3;max-width:100%}
   .tip span{display:inline-block;margin-right:.5em;padding:.15em .5em;border-radius:6px;background:var(--mintDeep);color:#fff;font-size:.62em;letter-spacing:.1em;vertical-align:.2em}
   .tip small{display:block;margin-top:.4vh;font-size:.62em;font-weight:600;color:#6c7a75}
+  #picker{display:flex;flex-direction:column;gap:1.6vh;margin:2.2vh 0 1.4vh;pointer-events:auto;width:min(100%,290px)}
+  .pk{appearance:none;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 10px;border-radius:16px;border:2px solid transparent;background:#fff;
+    color:var(--ink);font:inherit;text-align:left;box-shadow:0 4px 14px rgba(31,47,43,.08);cursor:pointer}
+  .pk img{width:clamp(44px,4.6vw,62px);aspect-ratio:512/700;object-fit:cover;object-position:top;border-radius:4px;background:#eee;outline:1px solid #ddd;image-rendering:auto}
+  .pk b{display:block;font-size:clamp(15px,1.6vw,21px);font-weight:900}
+  .pk span{display:block;font-size:clamp(11px,1.1vw,14px);color:#6c7a75;font-weight:600}
+  .pk.on{border-color:var(--mintDeep);background:#eef6f3}
+  .pk.on b::after{content:" ✓";color:var(--mintDeep)}
   .mini{width:clamp(110px,12vw,170px);background:#fff;border-radius:6px;padding:14px 12px 18px;box-shadow:0 10px 30px rgba(31,47,43,.14);
     transform:rotate(-4deg);margin-bottom:3.5vh;position:relative}
   .mini::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:8px;
@@ -150,9 +158,9 @@
   <div class="tip"><span>TIP</span>가까이서 찍어야 잘 나와요<small>Come closer for a better photo</small></div>
 </aside>
 <aside class="side" id="sideR" hidden>
-  <div class="mini"><i style="width:70%"></i><i style="width:45%"></i><div class="ph"></div><i style="width:55%"></i></div>
-  <div class="label">오늘의 한 장<span class="e" style="font-size:.55em">Today's Shot</span></div>
-  <div class="sub2">찍은 사진이<br>영수증으로 나와요<br><span style="font-size:.9em">Your photo prints<br>as a receipt</span></div>
+  <div class="label">프레임 선택<span class="e" style="font-size:.55em">Choose your frame</span></div>
+  <div id="picker"></div>
+  <div class="sub2">터치해서 바꿔 보세요 · Tap to change</div>
 </aside>
 <button id="usbChip" type="button" hidden>프린터 연결</button>
 <div id="flash"></div>
@@ -939,6 +947,45 @@
     if (S.conn === "sys") return sysPrint(r);
     return eposPrint(r);
   }
+
+  // ---------- frame picker on the main screen ----------
+  const CHOICES = [
+    { key: "vogue", ko: "매거진 커버", en: "Magazine" },
+    { key: "basic", ko: "기본", en: "Classic" },
+    { key: "halloween", ko: "할로윈", en: "Halloween" }
+  ];
+  const thumbs = {};
+  function renderPicker(){
+    const el = $("picker"); if (!el) return;
+    el.innerHTML = "";
+    for (const ch of CHOICES){
+      const b = document.createElement("button"); b.type = "button"; b.className = "pk" + (S.design === ch.key ? " on" : "");
+      const im = document.createElement("img"); im.alt = ""; if (thumbs[ch.key]) im.src = thumbs[ch.key];
+      const t = document.createElement("div"); t.innerHTML = `<b>${ch.ko}</b><span>${ch.en}</span>`;
+      b.append(im, t);
+      b.addEventListener("click", () => {
+        if (busy || pending) return;
+        S.design = ch.key; store.set("rc_settings", S);
+        layoutGuide(); renderPicker(); poke();
+      });
+      el.appendChild(b);
+    }
+  }
+  // build each thumbnail by running the real composer on a placeholder silhouette
+  function makeThumbs(){
+    const ph = document.createElement("canvas"); ph.width = 600; ph.height = 800;
+    const g = ph.getContext("2d");
+    g.fillStyle = "#c9c9c9"; g.fillRect(0, 0, 600, 800);
+    g.fillStyle = "#555"; g.beginPath(); g.arc(300, 330, 95, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(300, 760, 230, 300, 0, Math.PI, 0); g.fill();
+    const keep = S.design;
+    for (const ch of CHOICES){
+      try{ S.design = ch.key; thumbs[ch.key] = compose(ph, 27).dataURL; }catch(e){}
+    }
+    S.design = keep; renderPicker();
+  }
+  renderPicker();
+  addEventListener("load", () => setTimeout(makeThumbs, 800));
 
   // ---------- flow ----------
   let busy = false;
