@@ -388,7 +388,7 @@
   function activeFrame(){ const f = FRAMES[S.design]; return f && frameImgs[S.design].complete ? f : null; }
   function designRatio(){
     if (S.design === "vogue") return 512 / 700;
-    if (S.design === "xmas") return 440 / 500;
+    if (S.design === "xmas") return 1;
     if (S.design === "newyear") return 1;
     const f = FRAMES[S.design];
     if (f && f.overlay) return 1 / f.aspect;
@@ -615,18 +615,16 @@
   function stamp(d){ return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
   function composeXmas(photo, serial){
-    const W = parseInt(S.width, 10), k = W / 512, H = Math.round(790 * k);
+    const W = parseInt(S.width, 10), k = W / 512, H = Math.round(730 * k);
     const c = work; c.width = W; c.height = H; const x = c.getContext("2d");
     x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
     const T = textTool(x, k), d = new Date(), no = String(serial).padStart(4, "0");
     T("JADE & WATER · SEONGSU", W/2, 22*k, `800 ${12*k}px ${FONT}`, "center", 4*k);
     T("Merry", W/2, 40*k, `italic 400 ${58*k}px ${SERIF}`, "center", 0);
     T("CHRISTMAS", W/2, 104*k, `400 ${36*k}px ${SERIF}`, "center", 9*k);
-    x.fillStyle = "#000"; star(x, W/2, 160*k, 7*k);
-    x.fillRect(W/2 - 70*k, 159*k, 52*k, 1.5*k); x.fillRect(W/2 + 18*k, 159*k, 52*k, 1.5*k);
-    // photo in an arched window
-    const px = 36*k, py = 182*k, pw = 440*k, ph = 500*k, r = pw / 2;
-    x.save(); x.beginPath(); x.moveTo(px, py + r); x.arc(px + r, py + r, r, Math.PI, 0); x.lineTo(px + pw, py + ph); x.lineTo(px, py + ph); x.closePath(); x.clip();
+    // square photo, double rule frame
+    const px = 36*k, py = 186*k, pw = 440*k, ph = 440*k;
+    x.save(); x.beginPath(); x.rect(px, py, pw, ph); x.clip();
     coverDraw(x, photo, px, py, pw, ph);
     toneAdjust(x, px, py, pw, ph, S.bright, S.contrast);
     // gentle snowfall over the top of the window
@@ -639,11 +637,12 @@
     snowflake(x, px + pw * .16, py + ph * .2, 16*k, k); snowflake(x, px + pw * .84, py + ph * .14, 12*k, k);
     x.restore();
     x.strokeStyle = "#000"; x.lineWidth = 1.5*k;
-    for (const g of [0, 7*k]){ x.beginPath(); x.moveTo(px - g, py + ph + g); x.lineTo(px - g, py + r); x.arc(px + r, py + r, r + g, Math.PI, 0); x.lineTo(px + pw + g, py + ph + g); x.closePath(); x.stroke(); }
+    for (const g of [0, 7*k]) x.strokeRect(px - g, py - g, pw + 2*g, ph + 2*g);
+    x.fillStyle = "#fff"; x.fillRect(W/2 - 16*k, py - 15*k, 32*k, 16*k); x.fillStyle = "#000"; star(x, W/2, py - 7*k, 8*k);
     // copy
-    T("올해 가장 잘한 일", W/2, 708*k, `400 ${15*k}px ${FONT}`, "center", 2*k);
-    T("여기서 이 사진 찍은 것", W/2, 728*k, `900 ${24*k}px ${FONT}`, "center", 0);
-    T(`HOLIDAY EDITION ${d.getFullYear()}  ·  No.${no}  ·  ${stamp(d)}`, W/2, 766*k, `700 ${11*k}px ${FONT}`, "center", 1.5*k);
+    T("올해 가장 잘한 일", W/2, 648*k, `400 ${15*k}px ${FONT}`, "center", 2*k);
+    T("여기서 이 사진 찍은 것", W/2, 668*k, `900 ${24*k}px ${FONT}`, "center", 0);
+    T(`HOLIDAY EDITION ${d.getFullYear()}  ·  No.${no}  ·  ${stamp(d)}`, W/2, 706*k, `700 ${11*k}px ${FONT}`, "center", 1.5*k);
     return finish(x, c, W, H);
   }
 
@@ -654,7 +653,7 @@
       ["연애운", "★★★★★", "브런치 약속이 끊이지 않는다"], ["연애운", "★★★★☆", "뜻밖의 사람과 맛집이 겹친다"],
       ["건강운", "★★★★☆", "샐러드를 먹을 일이 자주 생긴다"], ["건강운", "★★★★★", "잘 먹고 잘 웃는 한 해"],
       ["직장운", "★★★★☆", "월요일이 조금 덜 미워진다"], ["직장운", "★★★☆☆", "점심 메뉴 결정권을 얻는다"],
-      ["행운의 메뉴", "◆", "오늘 먹은 그 메뉴"], ["행운의 장소", "◆", "성수동, 창가 자리"]
+      ["행운의 메뉴", "◆", "오늘 먹은 그 메뉴"], ["행운의 장소", "◆", "제이드앤워터 성수LCDC점 창가 자리"]
     ]
   };
   function composeNewYear(photo, serial){
